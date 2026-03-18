@@ -15,7 +15,7 @@ Code-Man is an immersive educational project built within the OpenSimulator envi
 ## Repository Contents
 - `/Scripts`: LSL source code files for game logic, APIs, and GUI handlers.
 - `/Assets`: 3D mesh files (.dae) for the maze and game objects.
-- `/Backup`: The `.oar` file (OpenSimulator Archive) containing the full world state.
+- `/Backup`: The `.oar` files (OpenSimulator Archive) containing the full world state.
 
 ## How to run this project on a new machine
 To reproduce the project environment, please follow these steps:
