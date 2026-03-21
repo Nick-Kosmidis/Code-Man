@@ -1,6 +1,7 @@
 vector mazeEntry = <128, 71, 22>;
 vector portalEntry = <128, 50, 22>;
-integer shouldRestore = TRUE;
+integer inMaze = FALSE;
+string meshName = "Pacman"; 
 
 default
 {
@@ -8,36 +9,39 @@ default
     {
         key user = llDetectedKey(0);
         llRequestPermissions(user, PERMISSION_CONTROL_CAMERA | PERMISSION_TELEPORT);
-        shouldRestore = !shouldRestore;
     }
     
     run_time_permissions(integer perm)
     {
+        key user = llGetPermissionsKey();
         if (perm & PERMISSION_CONTROL_CAMERA)
         {
-            if(shouldRestore)
+            inMaze = !inMaze;
+            
+            if(inMaze)
             {
-                llTeleportAgent(llGetPermissionsKey(), "", mazeEntry, <0,0,0>);
+                llRezObject(meshName, llGetPos() + <0,0,1.0>, ZERO_VECTOR, llEuler2Rot(<0, 0, 180>), 0);
+                
+                llTeleportAgent(user, "", mazeEntry, <0,0,0>);
 
                 llClearCameraParams(); 
                 llSetCameraParams([
                     CAMERA_ACTIVE, 1,               
+                    CAMERA_PITCH, 90.0,        
+                    CAMERA_DISTANCE, 15.0,            
                     CAMERA_FOCUS_LOCKED, FALSE,       
                     CAMERA_POSITION_LOCKED, FALSE,    
-                    CAMERA_PITCH, 90.0,             
-                    CAMERA_DISTANCE, 5.0,             
                     CAMERA_BEHINDNESS_ANGLE, 0.0,
                     CAMERA_POSITION_LAG, 0.0,         
                     CAMERA_FOCUS_LAG, 0.0             
                 ]);
-                
-                llOwnerSay("Top-down mode: ON");
             }
             else
             {
+                llSetCameraParams([CAMERA_ACTIVE, 0]); 
                 llClearCameraParams();
-                llTeleportAgent(llGetPermissionsKey(), "", portalEntry, <0,0,0>);
-                llOwnerSay("Top-down mode: ON");
+                
+                llTeleportAgent(user, "", portalEntry, <0,0,0>);
             }
         }
     }
