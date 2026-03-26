@@ -1,0 +1,7 @@
+local distance = get_nearest_ghost_distance()
+
+if(distance < 500) then
+  set_ghosts_speed(20)
+end
+
+return "Near ghost:" .. distance

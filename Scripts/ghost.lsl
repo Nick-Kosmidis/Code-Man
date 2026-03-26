@@ -1,20 +1,19 @@
-vector currentDirection = <1, 0, 0>;
+vector currentDirection = <-1, 0, 0>;
 float speed = 0.8;
 float lookAhead = 1.0; 
-float ghostRadius = llGetScale().x / 1.5; 
-integer bShouldMove = FALSE;
+float ghostRadius = llGetScale().x; // 1.5; 
+integer bShouldMove = TRUE;
 
-
-UpdateRotation()
+UpdateGhostSprite()
 {
-    float finalAngle = 0;
+    float frame = 0.0;
     
-    if(currentDirection == <1, 0, 0>)       finalAngle = 90;
-    else if(currentDirection == <-1, 0, 0>)  finalAngle = -90;
-    else if(currentDirection == <0, 1, 0>)   finalAngle = 180;
-    else if(currentDirection == <0, -1, 0>)  finalAngle = 0;
-
-    llSetRot(llEuler2Rot(<0, 0, finalAngle * DEG_TO_RAD>));
+    if(currentDirection == <1, 0, 0>)       frame = 0.0; 
+    else if(currentDirection == <-1, 0, 0>)  frame = 1.0; 
+    else if(currentDirection == <0, 1, 0>)   frame = 2.0; 
+    else if(currentDirection == <0, -1, 0>)  frame = 3.0; 
+    
+    llSetTextureAnim(ANIM_ON, 0, 4, 1, frame, 1.0, 0.0);
 }
 
 vector GenerateRandomDirection()
@@ -28,67 +27,61 @@ vector GenerateRandomDirection()
 
 integer IsSafeToMove(vector position)
 {
-    //Area 1
-    if (position.y >= 71 && position.y <= 110) 
+    if (position.y >= 111.0 && position.y <= 143.0) 
     {
-        //llOwnerSay("Ghost is in Area 1");
-        if (position.x >= 100 && position.x <= 156) 
-            return TRUE;
-    }
-    //Area 2
-    else if (position.y > 110 && position.y < 146) 
-    {
-        //llOwnerSay("Ghost is in Area 2");
-        if (position.x >= 111 && position.x <= 146) 
-            return TRUE;
-    }
-    //Area 3
-    else if (position.y >= 146 && position.y <= 186) 
-    {
-        //llOwnerSay("Ghost is in Area 3");
-        if (position.x >= 100 && position.x <= 156) 
-            return TRUE;
+        // Area 1&3
+        if ((position.y <= 121.0) || (position.y >= 133.0))
+        {
+            if (position.x >= 112.0 && position.x <= 144.0) 
+                return TRUE;
+        }
+        else 
+        {
+            // Area 2
+            if (position.x >= 118.5 && position.x <= 137.5) 
+                return TRUE;
+        }
     }
     
-    return FALSE; 
+    return FALSE;
 }
 
 default
 {
     state_entry()
     {
-        UpdateRotation();
         llSetTimerEvent(0.2);
     }
    
-    timer()
+   timer()
     {
         if(bShouldMove)
         {
             vector currentPosition = llGetPos();
-            vector start = currentPosition + (currentDirection * ghostRadius);
-            vector end = start + (currentDirection * lookAhead);
+            float detectionDistance = 0.7; 
+            vector beamEnd = currentPosition + (currentDirection * detectionDistance);
             
-            list raycast = llCastRay(start, end, [RC_REJECT_TYPES, RC_REJECT_AGENTS]);
+            list raycast = llCastRay(currentPosition, beamEnd, [RC_REJECT_TYPES, RC_REJECT_AGENTS]);
             integer status = llList2Integer(raycast, -1);
             
-            vector nextStep = currentPosition + (currentDirection * (speed + ghostRadius));
-            integer isOutOfBounds = !IsSafeToMove(nextStep);
+            vector nextPosition = currentPosition + (currentDirection * speed);
+            integer isOutOfBounds = !IsSafeToMove(nextPosition); 
+            
             if(status > 0 || isOutOfBounds)
             {
-                if(isOutOfBounds)
-                    llOwnerSay("Ghost try to escape");
                 vector newDirection = GenerateRandomDirection();
                 while(newDirection == currentDirection || newDirection == -currentDirection)
                 {
                     newDirection = GenerateRandomDirection();
                 }
-                //llOwnerSay("New Direction is:" + newDirection);
+                
                 currentDirection = newDirection;
+                UpdateGhostSprite();
             }
-            UpdateRotation();
-            llSetPos(currentPosition + (currentDirection * speed));
+            else
+            {
+                llSetPos(nextPosition);
+            }
         }
-        
     }
 }
