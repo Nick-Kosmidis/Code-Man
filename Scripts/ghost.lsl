@@ -1,13 +1,13 @@
 vector currentDirection = <-1, 0, 0>;
-float speed = 0.8;
-float lookAhead = 1.0; 
-float ghostRadius = llGetScale().x; // 1.5; 
-integer bShouldMove = TRUE;
+float speed = 0.5;
+float lookAhead = 1.5; 
+float ghostRadius = llGetScale().x; 
+integer bShouldMove = FALSE;
+integer GHOST_PIN = 12345; 
 
 UpdateGhostSprite()
 {
     float frame = 0.0;
-    
     if(currentDirection == <1, 0, 0>)       frame = 0.0; 
     else if(currentDirection == <-1, 0, 0>)  frame = 1.0; 
     else if(currentDirection == <0, 1, 0>)   frame = 2.0; 
@@ -27,22 +27,19 @@ vector GenerateRandomDirection()
 
 integer IsSafeToMove(vector position)
 {
-    if (position.y >= 111.0 && position.y <= 143.0) 
+    if (position.y >= 111.0 && position.y <= 144) 
     {
-        // Area 1&3
-        if ((position.y <= 121.0) || (position.y >= 133.0))
+        if ((position.y <= 124.0) || (position.y >= 134.0))
         {
-            if (position.x >= 112.0 && position.x <= 144.0) 
+            if (position.x >= 108.5 && position.x <= 140) 
                 return TRUE;
         }
         else 
         {
-            // Area 2
-            if (position.x >= 118.5 && position.x <= 137.5) 
+            if (position.x >= 116 && position.x <= 137.5) 
                 return TRUE;
         }
     }
-    
     return FALSE;
 }
 
@@ -50,10 +47,11 @@ default
 {
     state_entry()
     {
+        llSetRemoteScriptAccessPin(GHOST_PIN); 
         llSetTimerEvent(0.2);
     }
    
-   timer()
+    timer()
     {
         if(bShouldMove)
         {
@@ -67,7 +65,7 @@ default
             vector nextPosition = currentPosition + (currentDirection * speed);
             integer isOutOfBounds = !IsSafeToMove(nextPosition); 
             
-            if(status > 0 || isOutOfBounds)
+            if(status > 0) //|| isOutOfBounds)
             {
                 vector newDirection = GenerateRandomDirection();
                 while(newDirection == currentDirection || newDirection == -currentDirection)
@@ -82,6 +80,22 @@ default
             {
                 llSetPos(nextPosition);
             }
+        }
+    }
+    
+    link_message(integer sender_num, integer num, string str, key id)
+    {
+        if (str == "SLOW_ON")
+        {
+            speed = 0.08; 
+            llSetColor(<0, 0, 1>, ALL_SIDES); 
+            llOwnerSay("Ghost effect: SLOWED by user script.");
+        }
+        else if (str == "SLOW_OFF")
+        {
+            speed = 0.5;
+            llSetColor(<1, 1, 1>, ALL_SIDES);
+            llOwnerSay("Ghost effect: NORMAL SPEED restored.");
         }
     }
 }
