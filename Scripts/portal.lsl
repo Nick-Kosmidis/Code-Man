@@ -4,6 +4,9 @@ vector cameraPosition = <128, 120, 57>; // Ύψος για την κάμερα
 integer inMaze = FALSE;
 string meshName = "Pacman"; 
 
+string hudName = "CodemanHUD"; 
+//string templateName = "SlowEffect_Template";
+
 default
 {
     touch_start(integer num)
@@ -24,6 +27,11 @@ default
             if(inMaze)
             {
                 llOwnerSay("Entering Maze...");
+                
+                llGiveInventory(user, hudName);
+                //llGiveInventory(user, templateName);
+                llOwnerSay("Check your inventory for 'Code-Man HUD' and the Script Template.");
+                
                 llRezObject(meshName, mazeEntry, ZERO_VECTOR, ZERO_ROTATION, 0);
 
                 llClearCameraParams(); 
