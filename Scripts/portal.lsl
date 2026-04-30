@@ -1,40 +1,39 @@
-vector mazeEntry = <128, 111, 22>;
-vector portalEntry = <128, 100, 21>;
-vector cameraPosition = <128, 120, 57>; // Ύψος για την κάμερα
-integer inMaze = FALSE;
+vector mazeEntry = <128, 111, 21.5>; 
 string meshName = "Pacman"; 
-
-string hudName = "CodemanHUD"; 
-//string templateName = "SlowEffect_Template";
+string hudName = "CodemanHUD";
+integer inMaze = FALSE;
+vector cameraPosition = <128, 120, 57>;
 
 default
 {
     touch_start(integer num)
     {
         key user = llDetectedKey(0);
-        
         llRequestPermissions(user, PERMISSION_CONTROL_CAMERA);
     }
     
     run_time_permissions(integer perm)
     {
-        key user = llGetPermissionsKey();
-        
-        if (perm & (PERMISSION_CONTROL_CAMERA))
+        if (perm & PERMISSION_CONTROL_CAMERA)
         {
             inMaze = !inMaze;
+            key user = llGetPermissionsKey();
             
             if(inMaze)
             {
-                llOwnerSay("Entering Maze...");
+                if (llGetInventoryType(meshName) == INVENTORY_OBJECT)
+                {
+                    llOwnerSay("Spawning Pacman...");
+                    llRezObject(meshName, mazeEntry, ZERO_VECTOR, ZERO_ROTATION, 0);
+                }
+                else
+                {
+                    llOwnerSay("Error: '" + meshName + "' is not contained in the Portal's Content folder");
+                }
                 
-                llGiveInventory(user, hudName);
-                //llGiveInventory(user, templateName);
-                llOwnerSay("Check your inventory for 'Code-Man HUD' and the Script Template.");
-                
-                llRezObject(meshName, mazeEntry, ZERO_VECTOR, ZERO_ROTATION, 0);
+                if (llGetInventoryType(hudName) == INVENTORY_OBJECT)
+                    llGiveInventory(user, hudName);
 
-                llClearCameraParams(); 
                 llSetCameraParams([
                     CAMERA_ACTIVE, TRUE,
                     CAMERA_FOCUS_LOCKED, TRUE,
@@ -49,7 +48,7 @@ default
             else
             {
                 llRegionSay(-99, "DIE_PACMAN");
-                llSetCameraParams([CAMERA_ACTIVE, FALSE]); 
+                llSetCameraParams([CAMERA_ACTIVE, FALSE]);
                 llClearCameraParams();
                 llOwnerSay("Returning to Lobby.");
             }
