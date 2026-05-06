@@ -1,14 +1,14 @@
 float grid_unit = 2.0;
-float speed = 0.5; 
+float speed = 1.0; 
 vector currentDirection = <0.5, 0, 0>;
 integer canMove = TRUE;
+integer GHOST_PIN = 12345;
 
 float snap(float val) 
 {
     return (float)llRound(val / grid_unit) * grid_unit;
 }
 
-// Έλεγχος για τοίχους
 integer isPathClear(vector pos, vector dir) 
 {
     vector startPoint = pos + (llVecNorm(dir) * 0.6);
@@ -59,6 +59,7 @@ default
 {
     state_entry() 
     {
+        llSetRemoteScriptAccessPin(GHOST_PIN); 
         llSetRot(llEuler2Rot(<0,0,0>)); 
         UpdateGhostSprite();
         llSetTimerEvent(0.1);
@@ -100,4 +101,31 @@ default
             UpdateGhostSprite();
         }
     }
+    
+    link_message(integer sender_num, integer num, string str, key id)
+    {
+       
+        vector pos = llGetPos();
+
+        if (str == "SLOW_ON")
+        {
+            speed = 0.2;
+            currentDirection = llVecNorm(currentDirection) * speed;
+            
+            llSetColor(<0, 0, 1>, ALL_SIDES);
+            llOwnerSay("Ghost effect: SLOWED");
+        }
+        else if (str == "SLOW_OFF")
+        {
+            speed = 1.0; 
+            currentDirection = llVecNorm(currentDirection) * speed;
+            
+            llSetColor(<1, 1, 1>, ALL_SIDES); 
+            llOwnerSay("Ghost effect: NORMAL SPEED");
+            
+            currentDirection = chooseRandomDirection(pos);
+            UpdateGhostSprite();
+        }
+    }
+
 }
