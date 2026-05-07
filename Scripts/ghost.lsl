@@ -3,6 +3,10 @@ float speed = 1.0;
 vector currentDirection = <0.5, 0, 0>;
 integer canMove = TRUE;
 integer GHOST_PIN = 12345;
+float slowDuration = 0.0;
+
+float NORMAL_SPEED = 1.0;
+float SLOW_SPEED = 0.2;
 
 float snap(float val) 
 {
@@ -69,6 +73,20 @@ default
     {
         if(!canMove) return;
         
+        if (slowDuration > 0) 
+        {
+            slowDuration -= 0.1;
+            if (slowDuration <= 0) 
+            {
+                speed = NORMAL_SPEED;
+                currentDirection = llVecNorm(currentDirection) * speed;
+                llSetColor(<1, 1, 1>, ALL_SIDES);
+                llOwnerSay("Ghost effect expired: Normal speed restored.");
+                UpdateGhostSprite();
+            }
+        }
+        
+        
         vector pos = llGetPos();
         integer aheadClear = isPathClear(pos, currentDirection);
         
@@ -109,23 +127,13 @@ default
 
         if (str == "SLOW_ON")
         {
-            speed = 0.2;
+            speed = SLOW_SPEED;
             currentDirection = llVecNorm(currentDirection) * speed;
+            
+            slowDuration = 5.0;
             
             llSetColor(<0, 0, 1>, ALL_SIDES);
             llOwnerSay("Ghost effect: SLOWED");
         }
-        else if (str == "SLOW_OFF")
-        {
-            speed = 1.0; 
-            currentDirection = llVecNorm(currentDirection) * speed;
-            
-            llSetColor(<1, 1, 1>, ALL_SIDES); 
-            llOwnerSay("Ghost effect: NORMAL SPEED");
-            
-            currentDirection = chooseRandomDirection(pos);
-            UpdateGhostSprite();
-        }
     }
-
 }
