@@ -1,5 +1,4 @@
 // =========================================================
-// GHOST POWER-UP TEMPLATE (Level 3 Logic)
 // Instructions for the User:
 // 1. Open this script from your Inventory.
 // 2. Write your logic inside the touch_start event.

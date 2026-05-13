@@ -1,7 +1,10 @@
 float grid_unit = 2.0;
 float speed = 1.0; 
+
 vector currentDirection = <0.5, 0, 0>;
-integer canMove = TRUE;
+vector initialPosition = <128.0, 134.0, 21.5>;
+
+integer canMove = FALSE;
 integer GHOST_PIN = 12345;
 float slowDuration = 0.0;
 
@@ -31,6 +34,19 @@ UpdateGhostSprite()
     else if(currentDirection.y < 0) frame = 3.0;
     
     llSetTextureAnim(ANIM_ON, 0, 4, 1, frame, 1.0, 0.0);
+}
+
+ResetGhost()
+{
+    canMove = FALSE;
+    llSetRegionPos(initialPosition); 
+    slowDuration = 0.0;
+    speed = NORMAL_SPEED; 
+    currentDirection = <speed, 0, 0>;
+    llSetColor(<1, 1, 1>, ALL_SIDES);
+    UpdateGhostSprite();
+            
+    llOwnerSay("Ghost returned to base.");
 }
 
 vector chooseRandomDirection(vector pos) 
@@ -63,6 +79,7 @@ default
 {
     state_entry() 
     {
+        llListen(-100, "", NULL_KEY, "");
         llSetRemoteScriptAccessPin(GHOST_PIN); 
         llSetRot(llEuler2Rot(<0,0,0>)); 
         UpdateGhostSprite();
@@ -134,6 +151,20 @@ default
             
             llSetColor(<0, 0, 1>, ALL_SIDES);
             llOwnerSay("Ghost effect: SLOWED");
+        }
+    }
+    
+    listen(integer channel, string name, key id, string msg) 
+    {
+        if (msg == "START_GAME") 
+        {
+            canMove = TRUE;
+            llOwnerSay("Ghost Activated!");
+        }
+        else if (msg == "STOP_GAME") 
+        {
+            llOwnerSay("RESET");
+            ResetGhost();
         }
     }
 }

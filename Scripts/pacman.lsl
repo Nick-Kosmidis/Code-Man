@@ -34,6 +34,7 @@ default
     {
         key user = llDetectedKey(0);
         llRequestPermissions(user, PERMISSION_TAKE_CONTROLS);
+        llShout(-100, "START_GAME");
     }
     
     on_rez(integer num)
@@ -105,6 +106,10 @@ default
     
     listen(integer channel, string name, key id, string msg)
     {
-        if (msg == "DIE_PACMAN") llDie(); 
+        if (msg == "DIE_PACMAN") 
+        {
+            llShout(-100, "STOP_GAME");
+            llDie(); 
+        }
     }
 }
