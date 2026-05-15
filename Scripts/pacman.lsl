@@ -14,13 +14,32 @@ float snap(float val) {
 
 integer isPathClear(vector pos, vector dir) 
 {
-
     vector startPoint = pos + (llVecNorm(dir) * 0.6); 
     vector endPosition = startPoint + (llVecNorm(dir) * 1.2); 
     
-    list raycast = llCastRay(startPoint, endPosition, [RC_REJECT_TYPES, RC_REJECT_AGENTS | RC_REJECT_LAND]);
+    list raycast = llCastRay(startPoint, endPosition, [
+        RC_REJECT_TYPES, RC_REJECT_AGENTS | RC_REJECT_LAND,
+        RC_DATA_FLAGS, RC_GET_ROOT_KEY
+    ]);
+    
     integer status = llList2Integer(raycast, -1);
-    return (status == 0);
+    
+    if (status > 0)
+    {
+        key hitKey = llList2Key(raycast, 0);
+        list details = llGetObjectDetails(hitKey, [OBJECT_NAME]);
+        string hitName = llList2String(details, 0);
+        
+        if (hitName == "PowerPellet") 
+        {
+            llRegionSayTo(hitKey, -500, "EATEN");    
+            return TRUE;
+        }
+        
+        return FALSE; 
+    }
+    
+    return TRUE;
 }
 
 default
@@ -109,6 +128,7 @@ default
         if (msg == "DIE_PACMAN") 
         {
             llShout(-100, "STOP_GAME");
+            llRegionSay(-98, "END_GAME");
             llDie(); 
         }
     }

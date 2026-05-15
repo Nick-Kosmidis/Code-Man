@@ -6,6 +6,12 @@ vector cameraPosition = <128, 128, 64>;
 
 default
 {
+    
+    state_entry()
+    {
+        llListen(-98, "", NULL_KEY, "END_GAME");
+    }
+    
     touch_start(integer num)
     {
         key user = llDetectedKey(0);
@@ -58,6 +64,17 @@ default
                 
                 llOwnerSay("Returning to Lobby. Game Over. Ghosts resetting...");
             }
+        }
+    }
+    
+    listen(integer channel, string name, key id, string msg)
+    {
+        if (msg == "END_GAME") 
+        {
+            llSetCameraParams([CAMERA_ACTIVE, FALSE]);
+            llClearCameraParams();
+            inMaze = FALSE;
+            llOwnerSay("Returning to Lobby. Game Over. Ghosts resetting...");
         }
     }
 }
