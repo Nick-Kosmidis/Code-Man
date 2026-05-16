@@ -406,7 +406,7 @@ default
                 llOwnerSay("Normal Mode Restored");
             }
         }
-        else if (channel == 777)
+        else if (channel == 777 && canMove)
         {
             if (msg == "SLOW")
             {
