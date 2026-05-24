@@ -266,6 +266,37 @@ default
     {
         if(!canMove) return;
         
+        vector pos = llGetPos();
+
+        if (pacmanKey != NULL_KEY)
+        {
+            list pacmanDetails = llGetObjectDetails(pacmanKey, [OBJECT_POS]);
+            if (llGetListLength(pacmanDetails) > 0)
+            {
+                vector pacmanPos = llList2Vector(pacmanDetails, 0);
+                float currentDist = llVecDist(pos, pacmanPos);
+
+                if (currentDist <= 1.6)
+                {
+                    if (isFrightened && !isEaten)
+                    {
+                        isEaten = TRUE;
+                        isFrightened = FALSE; 
+                        isGhostOutside = TRUE; 
+                        speed = 1.0;
+                        currentDirection = llVecNorm(currentDirection) * speed;
+                        
+                        UpdateGhostSprite();
+                    }
+                    else if (!isFrightened && !isEaten)
+                    {
+                        llRegionSay(-99, "DIE_PACMAN");
+                        return;
+                    }
+                }
+            }
+        }
+        
         if (slowDuration > 0) 
         {
             slowDuration -= 0.1;
@@ -279,7 +310,6 @@ default
             }
         }
         
-        vector pos = llGetPos();
         integer aheadClear = isPathClear(pos, currentDirection);
         
         float distX = llFabs(pos.x - snap(pos.x));

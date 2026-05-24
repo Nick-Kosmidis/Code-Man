@@ -55,6 +55,7 @@ integer isPathClear(vector pos, vector dir)
         }
         else if (hitName == "Pacman")
         {
+            llOwnerSay("Collide with pacman");
             if(isFrightened && !isEaten)
             {
                 isEaten = TRUE;
@@ -253,9 +254,38 @@ default
         pacmanKey = NULL_KEY;
     }
 
-    timer() 
+timer() 
     {
         if(!canMove) return;
+        
+        vector pos = llGetPos();
+        if (pacmanKey != NULL_KEY)
+        {
+            list pacmanDetails = llGetObjectDetails(pacmanKey, [OBJECT_POS]);
+            if (llGetListLength(pacmanDetails) > 0)
+            {
+                vector pacmanPos = llList2Vector(pacmanDetails, 0);
+                float currentDist = llVecDist(pos, pacmanPos);
+                if (currentDist <= 1.6)
+                {
+                    if (isFrightened && !isEaten)
+                    {
+                        isEaten = TRUE;
+                        isFrightened = FALSE; 
+                        isGhostOutside = TRUE; 
+                        speed = NORMAL_SPEED;
+                        currentDirection = llVecNorm(currentDirection) * speed;
+                        
+                        UpdateGhostSprite();
+                    }
+                    else if (!isFrightened && !isEaten)
+                    {
+                        llRegionSay(-99, "DIE_PACMAN");
+                        return;
+                    }
+                }
+            }
+        }
         
         if (slowDuration > 0) 
         {
@@ -270,7 +300,6 @@ default
             }
         }
         
-        vector pos = llGetPos();
         integer aheadClear = isPathClear(pos, currentDirection);
         
         float distX = llFabs(pos.x - snap(pos.x));

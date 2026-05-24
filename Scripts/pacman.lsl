@@ -92,6 +92,8 @@ default
    timer()
     {
         if(!canMove) return;
+        float MIN_X = 96.0;
+        float MAX_X = 160.0;
 
         vector pos = llGetPos();
         integer aheadClear = isPathClear(pos, currentDirection);
@@ -99,27 +101,36 @@ default
         float distX = llFabs(pos.x - snap(pos.x));
         float distY = llFabs(pos.y - snap(pos.y));
 
-        if((distX < 0.25 && distY < 0.25) || !aheadClear) 
+        if(((distX < 0.25 && distY < 0.25) || !aheadClear) && (pos.x >= MIN_X && pos.x <= MAX_X)) 
         {
             if(isPathClear(pos, nextDirection)) 
             {
                 if(currentDirection != nextDirection)
                 {
-                    currentDirection = nextDirection;
-                    
-                    pos.x = snap(pos.x);
-                    pos.y = snap(pos.y);
-                    llSetRegionPos(pos); 
-                    
-                    float angle = llAtan2(currentDirection.y, currentDirection.x);
-                    llSetRot(llEuler2Rot(<0, 0, angle>));
+                    vector testNextPos = pos + nextDirection;
+                    if(testNextPos.x >= MIN_X && testNextPos.x <= MAX_X)
+                    {
+                        currentDirection = nextDirection;
+                        
+                        pos.x = snap(pos.x);
+                        pos.y = snap(pos.y);
+                        llSetRegionPos(pos); 
+                        
+                        float angle = llAtan2(currentDirection.y, currentDirection.x);
+                        llSetRot(llEuler2Rot(<0, 0, angle>));
+                    }
                 }
             }
         }
 
         if(isPathClear(pos, currentDirection))
         {
-            llSetRegionPos(pos + currentDirection);
+            vector nextPos = pos + currentDirection;
+            
+            if(nextPos.x >= MIN_X && nextPos.x <= MAX_X)
+            {
+                llSetRegionPos(nextPos);
+            }
         }
     }
     
