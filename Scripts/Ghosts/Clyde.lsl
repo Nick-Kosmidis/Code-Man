@@ -50,7 +50,7 @@ integer isPathClear(vector pos, vector dir)
         key hitKey = llList2Key(raycast, 0);
         string hitName = llKey2Name(hitKey);
         
-        if (checkName(hitName) != -1 || hitName == "PowerPellet") 
+        if (checkName(hitName) != -1 || hitName == "PowerPellet" || hitName == "Pellet") 
         {
             return TRUE;
         }

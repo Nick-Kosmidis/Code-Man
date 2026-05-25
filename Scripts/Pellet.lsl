@@ -16,21 +16,11 @@ default
             isEaten = TRUE; 
             
             llCollisionFilter("", NULL_KEY, FALSE);
-            llRegionSay(-300, "GHOST_FRIGHT");
-            
-            llSetTimerEvent(6.0);    
         }
         else if(msg == "RESET" && isEaten)
         {
             llSetAlpha(1.0, ALL_SIDES);
             isEaten = FALSE;
         }
-    }
-
-    timer()
-    {
-        llRegionSay(-300, "GHOST_FRIGHT_STOP");
-        //llCollisionFilter("", NULL_KEY, TRUE);
-        llSetTimerEvent(0.0);
     }
 }

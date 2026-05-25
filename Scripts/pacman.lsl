@@ -1,4 +1,3 @@
-// Μεταβλητές Grid
 float grid_unit = 2.0; 
 vector nextDirection = <0.5, 0.0, 0.0>;
 vector currentDirection = <0.5, 0.0, 0.0>; 
@@ -8,12 +7,23 @@ float pacmanRadius = 2.0;
 integer controls_to_track;
 integer canMove = FALSE;
 
+float MIN_X = 96.0;
+float MAX_X = 160.0;
+float MIN_Y = 108.0;
+float MAX_Y = 152.0;
+
 float snap(float val) {
     return (float)llRound(val / grid_unit) * grid_unit;
 }
 
 integer isPathClear(vector pos, vector dir) 
 {
+    vector nextPos = pos + dir;
+    if (nextPos.x < MIN_X || nextPos.x > MAX_X || nextPos.y < MIN_Y || nextPos.y > MAX_Y)
+    {
+        return FALSE; 
+    }
+
     vector startPoint = pos + (llVecNorm(dir) * 0.6); 
     vector endPosition = startPoint + (llVecNorm(dir) * 1.2); 
     
@@ -30,7 +40,7 @@ integer isPathClear(vector pos, vector dir)
         list details = llGetObjectDetails(hitKey, [OBJECT_NAME]);
         string hitName = llList2String(details, 0);
         
-        if (hitName == "PowerPellet") 
+        if (hitName == "PowerPellet" || hitName == "Pellet") 
         {
             llRegionSayTo(hitKey, -500, "EATEN");    
             return TRUE;
@@ -89,11 +99,9 @@ default
         }
     }
 
-   timer()
+    timer()
     {
         if(!canMove) return;
-        float MIN_X = 96.0;
-        float MAX_X = 160.0;
 
         vector pos = llGetPos();
         integer aheadClear = isPathClear(pos, currentDirection);
@@ -101,36 +109,27 @@ default
         float distX = llFabs(pos.x - snap(pos.x));
         float distY = llFabs(pos.y - snap(pos.y));
 
-        if(((distX < 0.25 && distY < 0.25) || !aheadClear) && (pos.x >= MIN_X && pos.x <= MAX_X)) 
+        if ((distX < 0.25 && distY < 0.25) || !aheadClear) 
         {
-            if(isPathClear(pos, nextDirection)) 
+            if (isPathClear(pos, nextDirection)) 
             {
-                if(currentDirection != nextDirection)
+                if (currentDirection != nextDirection)
                 {
-                    vector testNextPos = pos + nextDirection;
-                    if(testNextPos.x >= MIN_X && testNextPos.x <= MAX_X)
-                    {
-                        currentDirection = nextDirection;
-                        
-                        pos.x = snap(pos.x);
-                        pos.y = snap(pos.y);
-                        llSetRegionPos(pos); 
-                        
-                        float angle = llAtan2(currentDirection.y, currentDirection.x);
-                        llSetRot(llEuler2Rot(<0, 0, angle>));
-                    }
+                    currentDirection = nextDirection;
+                    
+                    pos.x = snap(pos.x);
+                    pos.y = snap(pos.y);
+                    llSetRegionPos(pos); 
+                    
+                    float angle = llAtan2(currentDirection.y, currentDirection.x);
+                    llSetRot(llEuler2Rot(<0, 0, angle>));
                 }
             }
         }
 
-        if(isPathClear(pos, currentDirection))
+        if (isPathClear(pos, currentDirection))
         {
-            vector nextPos = pos + currentDirection;
-            
-            if(nextPos.x >= MIN_X && nextPos.x <= MAX_X)
-            {
-                llSetRegionPos(nextPos);
-            }
+            llSetRegionPos(pos + currentDirection);
         }
     }
     
@@ -140,6 +139,7 @@ default
         {
             llShout(-100, "STOP_GAME");
             llRegionSay(-98, "END_GAME");
+            llRegionSay(-500, "RESET"); 
             llDie(); 
         }
     }
