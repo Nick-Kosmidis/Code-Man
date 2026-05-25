@@ -5,6 +5,7 @@ integer isScatterMode = TRUE;
 
 integer isFrightened = FALSE;
 integer isEaten = FALSE; 
+integer isSlowed = FALSE;
 
 vector currentDirection = <0, 0.5, 0>;
 vector initialPosition = <125.0, 130.0, 21.5>;
@@ -98,19 +99,24 @@ UpdateGhostSprite()
     float frame = 0.0;
     if(currentDirection.x > 0)      frame = 0.0; 
     else if(currentDirection.x < 0) frame = 1.0; 
-    else if(currentDirection.y > 0) frame = 2.0;
-    else if(currentDirection.y < 0) frame = 3.0;
+    else if(currentDirection.y > 0) frame = 2.0; 
+    else if(currentDirection.y < 0) frame = 3.0; 
     
     if (isEaten)
     {
         llSetTextureAnim(FALSE, 0, 0, 0, 0.0, 0.0, 0.0);
         llSetTexture("EatenGhost", ALL_SIDES);
-        llSetTextureAnim(0, 0, 4, 1, frame, 1.0, 0.0);
+        llSetTextureAnim(0, 0, 4, 1, frame, 1.0, 0.0); 
     }
     else if (isFrightened)
     {
         llSetTextureAnim(FALSE, 0, 0, 0, 0.0, 0.0, 0.0);
         llSetTexture("FrightenedGhost", ALL_SIDES);
+    }
+    else if (isSlowed)
+    {
+        llSetTextureAnim(FALSE, 0, 0, 0, 0.0, 0.0, 0.0);
+        llSetTexture("SlowedInky", ALL_SIDES);
     }
     else
     {
@@ -126,6 +132,7 @@ ResetGhost()
     isScatterMode = TRUE;
     isFrightened = FALSE;
     isEaten = FALSE;
+    isSlowed = FALSE;
     speed = NORMAL_SPEED;
     slowDuration = 0.0;           
     
@@ -302,6 +309,7 @@ default
             slowDuration -= 0.1;
             if (slowDuration <= 0) 
             {
+                isSlowed = FALSE; 
                 speed = NORMAL_SPEED;
                 currentDirection = llVecNorm(currentDirection) * speed;
                 llSetColor(<1, 1, 1>, ALL_SIDES);
@@ -444,14 +452,15 @@ default
                 llOwnerSay("Normal Mode Restored");
             }
         }
-        else if (channel == 777 && canMove)
+        else if channel == 777 && canMove && !isEaten && !isSlowed)
         {
             if (msg == "SLOW")
             {
+                isSlowed = TRUE;
                 speed = SLOW_SPEED;
                 currentDirection = llVecNorm(currentDirection) * speed;
                 slowDuration = 5.0;
-                llSetColor(<0,0,1>, ALL_SIDES);
+                UpdateGhostSprite();
             }
         }
     }

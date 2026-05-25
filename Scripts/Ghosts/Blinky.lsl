@@ -5,6 +5,7 @@ integer isScatterMode = TRUE;
 
 integer isFrightened = FALSE;
 integer isEaten = FALSE;
+integer isSlowed = FALSE;
 
 vector currentDirection = <-0.5, 0, 0>;
 vector initialPosition = <128.0, 134.0, 21.5>;
@@ -60,6 +61,7 @@ integer isPathClear(vector pos, vector dir)
             {
                 isEaten = TRUE;
                 isFrightened = FALSE; 
+                isSlowed = FALSE; 
                 isGhostOutside = TRUE;
                 speed = 1.0;
                 currentDirection = llVecNorm(currentDirection) * speed;
@@ -112,6 +114,11 @@ UpdateGhostSprite()
         llSetTextureAnim(FALSE, 0, 0, 0, 0.0, 0.0, 0.0);
         llSetTexture("FrightenedGhost", ALL_SIDES);
     }
+    else if (isSlowed)
+    {
+        llSetTextureAnim(FALSE, 0, 0, 0, 0.0, 0.0, 0.0);
+        llSetTexture("SlowedBlinky", ALL_SIDES);
+    }
     else
     {
         llSetTexture("RedGhost", ALL_SIDES);
@@ -126,6 +133,7 @@ ResetGhost()
     isScatterMode = TRUE;
     isFrightened = FALSE;
     isEaten = FALSE;
+    isSlowed = FALSE; 
     speed = NORMAL_SPEED;
     slowDuration = 0.0;          
     
@@ -263,6 +271,7 @@ default
                     {
                         isEaten = TRUE;
                         isFrightened = FALSE; 
+                        isSlowed = FALSE;
                         isGhostOutside = TRUE; 
                         speed = 1.0;
                         currentDirection = llVecNorm(currentDirection) * speed;
@@ -276,18 +285,17 @@ default
                 }
             }
         }
-        // -----------------------------------------------------
-        
         if (slowDuration > 0) 
         {
             slowDuration -= 0.1;
             if (slowDuration <= 0) 
             {
+                isSlowed = FALSE; 
                 speed = NORMAL_SPEED;
                 currentDirection = llVecNorm(currentDirection) * speed;
                 llSetColor(<1, 1, 1>, ALL_SIDES);
                 llOwnerSay("Ghost effect expired: Normal speed restored.");
-                UpdateGhostSprite();
+                UpdateGhostSprite(); 
             }
         }
                 
@@ -334,6 +342,7 @@ default
         {
             isEaten = FALSE;
             isFrightened = FALSE;
+            isSlowed = FALSE;
             isGhostOutside = FALSE;
             currentDirection = llVecNorm(currentDirection) * speed;
             
@@ -347,18 +356,15 @@ default
     
     link_message(integer sender_num, integer num, string str, key id)
     {
-       
-        vector pos = llGetPos();
-
         if (str == "SLOW_ON")
         {
+            isSlowed = TRUE;
             speed = SLOW_SPEED;
             currentDirection = llVecNorm(currentDirection) * speed;
-            
             slowDuration = 5.0;
-            
             llSetColor(<0, 0, 1>, ALL_SIDES);
             llOwnerSay("Ghost effect: SLOWED");
+            UpdateGhostSprite();
         }
     }
     
@@ -402,6 +408,7 @@ default
                 
                 llOwnerSay("BUU");
                 isFrightened = TRUE;    
+                isSlowed = FALSE;
                 speed = FRIGHTENED_SPEED;
                 
                 currentDirection = llVecNorm(currentDirection) * speed;
@@ -421,21 +428,19 @@ default
                 speed = NORMAL_SPEED;
                 currentDirection = llVecNorm(currentDirection) * speed;
                 
-                llSetTextureAnim(FALSE, 0, 0, 0, 0.0, 0.0, 0.0);
-                llSetTexture("RedGhost", ALL_SIDES);
-                
                 UpdateGhostSprite();
                 llOwnerSay("Normal Mode Restored");
             }
         }
-        else if (channel == 777 && canMove)
+        else if (channel == 777 && canMove && !isEaten && !isSlowed)
         {
             if (msg == "SLOW")
             {
+                isSlowed = TRUE;
                 speed = SLOW_SPEED;
                 currentDirection = llVecNorm(currentDirection) * speed;
                 slowDuration = 5.0;
-                llSetColor(<0,0,1>, ALL_SIDES);
+                UpdateGhostSprite();
             }
         }
     }
