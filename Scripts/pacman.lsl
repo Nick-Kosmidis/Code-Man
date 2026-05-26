@@ -4,8 +4,11 @@ vector currentDirection = <0.5, 0.0, 0.0>;
 float speed = 0.5;
 float pacmanRadius = 2.0; 
 
+integer lifes = 3;
+
 integer controls_to_track;
 integer canMove = FALSE;
+integer isEaten = FALSE;
 
 float MIN_X = 96.0;
 float MAX_X = 160.0;
@@ -52,6 +55,18 @@ integer isPathClear(vector pos, vector dir)
     return TRUE;
 }
 
+ResetPacman()
+{
+    llSetRegionPos(<128.0, 110.0, 21.5>);
+    canMove = FALSE;
+    //isEaten = FALSE;
+    speed = 0.5;
+    currentDirection = <speed, 0.0, 0.0>; 
+    nextDirection = <speed, 0.0, 0.0>;   
+    
+    llSetRot(llEuler2Rot(<0, 0, 0> * DEG_TO_RAD)); 
+}
+
 default
 {
     state_entry()
@@ -64,11 +79,12 @@ default
         key user = llDetectedKey(0);
         llRequestPermissions(user, PERMISSION_TAKE_CONTROLS);
         llShout(-100, "START_GAME");
+        isEaten = FALSE;
     }
     
     on_rez(integer num)
     {
-        llListen(-99, "", NULL_KEY, "DIE_PACMAN");
+        llListen(-99, "", NULL_KEY, "");
         llSetTexture("PacmanAnim", 0);
         llSetTextureAnim(ANIM_ON | LOOP, 0, 2, 1, 0.0, 2.0, 5.0);
     }
@@ -137,10 +153,28 @@ default
     {
         if (msg == "DIE_PACMAN") 
         {
+            if(isEaten)
+                    return;
+                    
+            isEaten = TRUE;
+            llOwnerSay("Pacman lost a life");
+            lifes--;
+            ResetPacman();
+            llShout(-100, "STOP_GAME");
+            if(lifes < 1)
+            {
+                llRegionSay(-98, "END_GAME");
+                llRegionSay(-500, "RESET"); 
+                llDie();    
+            }
+        }
+        else if(msg == "EXIT_MAZE")
+        {
+            llOwnerSay("Should exit maze");
             llShout(-100, "STOP_GAME");
             llRegionSay(-98, "END_GAME");
             llRegionSay(-500, "RESET"); 
-            llDie(); 
+            llDie();
         }
     }
 }

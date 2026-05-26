@@ -57,7 +57,7 @@ default
             }
             else
             {
-                llRegionSay(-99, "DIE_PACMAN");
+                llRegionSay(-99, "EXIT_MAZE");
                 
                 llSetCameraParams([CAMERA_ACTIVE, FALSE]);
                 llClearCameraParams();

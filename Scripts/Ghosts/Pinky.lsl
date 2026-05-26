@@ -280,6 +280,7 @@ default
                     else if (!isFrightened && !isEaten)
                     {
                         llRegionSay(-99, "DIE_PACMAN");
+                        ResetGhost();
                         return;
                     }
                 }
