@@ -10,16 +10,16 @@
 // 8. Click the "RunButton" on your HUD to execute your logic!
 // =========================================================
 
-speed = 0.1;
+float duration = 100;
 
 default
 {
     link_message(integer sender_num, integer num, string str, key id)
     {
-        if (str == "EXECUTE_USER_LOGIC")
+        if (str == "EXECUTE_FREEZE_LOGIC")
         {
             llOwnerSay("User Script: Custom Logic Activated!");
-            llMessageLinked(LINK_SET, 0, "SLOW=" + speed, NULL_KEY);
+            llMessageLinked(LINK_SET, 0, "FREEZE=" + duration, NULL_KEY);
         }
     }
 }

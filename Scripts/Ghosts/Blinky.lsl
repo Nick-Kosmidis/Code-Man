@@ -1,26 +1,34 @@
 float grid_unit = 2.0;
-float speed = 1.0; 
+
+float NORMAL_SPEED = 1.0;
+float SLOW_SPEED = 0.2;
+float FRIGHTENED_SPEED = 0.5;
+
+float speed = 1.0;
+float effectDuration = 0.0;
+float distractionDuration = 0.0;
+
+integer canMove = FALSE;
+
 integer isGhostOutside = TRUE;
 integer isScatterMode = TRUE;
 
 integer isFrightened = FALSE;
 integer isEaten = FALSE;
 integer isSlowed = FALSE;
+integer isFrozen = FALSE;
+integer isDistracted = FALSE;
 
-vector currentDirection = <-0.5, 0, 0>;
+vector currentDirection = <-0.5, 0.0, 0.0>;
+
 vector initialPosition = <128.0, 134.0, 21.5>;
-vector blinkyHomeCorner = <148.0, 148.0, 21.5>;
-vector outOfMazePosition = <128.0, 134.0, 21.5>;
 vector housePosition = <128.0, 130.0, 21.5>;
-
-integer canMove = FALSE;
-float slowDuration = 0.0;
-
-float NORMAL_SPEED = 1.0;
-float SLOW_SPEED = 0.2;
-float FRIGHTENED_SPEED = 0.5;
+vector outOfMazePosition = <128.0, 134.0, 21.5>;
+vector blinkyHomeCorner = <148.0, 148.0, 21.5>;
+vector distractionTarget;
 
 key pacmanKey;
+
 
 list ghostNames = ["Blinky", "Pinky", "Inky", "Clyde"];
 
@@ -29,94 +37,154 @@ integer checkName(string name)
     return llListFindList(ghostNames, [name]);
 }
 
-float snap(float val) 
+float snap(float val)
 {
     return (float)llRound(val / grid_unit) * grid_unit;
 }
 
-integer isPathClear(vector pos, vector dir) 
+ResetEffects()
 {
-    vector startPoint = pos + (llVecNorm(dir) * 0.6);
-    vector endPosition = startPoint + (llVecNorm(dir) * 1.2);
-   
-    list raycast = llCastRay(startPoint, endPosition, [
-        RC_REJECT_TYPES, RC_REJECT_AGENTS | RC_REJECT_LAND,
-        RC_DATA_FLAGS, RC_GET_ROOT_KEY
-    ]);
+    isFrightened = FALSE;
+    isSlowed = FALSE;
+    isFrozen = FALSE;
 
-    integer result = llList2Integer(raycast, -1);
-    
-    if (result > 0)
-    {
-        key hitKey = llList2Key(raycast, 0);
-        string hitName = llKey2Name(hitKey);
-        
-        if (checkName(hitName) != -1 || hitName == "PowerPellet" || hitName == "Pellet") 
-        {
-            return TRUE;
-        }
-        else if (hitName == "Pacman")
-        {
-            if(isFrightened && !isEaten)
-            {
-                isEaten = TRUE;
-                isFrightened = FALSE; 
-                isSlowed = FALSE; 
-                isGhostOutside = TRUE;
-                speed = 1.0;
-                currentDirection = llVecNorm(currentDirection) * speed;
-                
-                llOwnerSay("I am EATEN! Returning to ghost house...");
-                UpdateGhostSprite();
-            }
-            else if(!isFrightened && !isEaten)
-            {
-                llRegionSay(-99, "DIE_PACMAN");
-            }
-            return TRUE;
-        }
-        else if (hitName == "GhostGate")
-        {
-            if(isEaten) 
-                return TRUE;
-                
-            if(isGhostOutside == TRUE)
-                return FALSE;
-            else
-            {
-                llSetRegionPos(outOfMazePosition);
-                isGhostOutside = TRUE;
-                return TRUE;
-            }
-        }
-        return FALSE;
-    }
-    return TRUE;
+    ResetDistraction(); 
+    effectDuration = 0.0;
 }
+
+ApplyNormalState()
+{
+    ResetEffects();
+    speed = NORMAL_SPEED;
+    currentDirection = llVecNorm(currentDirection) * speed;
+    UpdateGhostSprite();
+}
+
+ApplyFrightenedState()
+{
+    if (isEaten || !isGhostOutside)
+        return;
+
+    ResetEffects();
+    isFrightened = TRUE;
+    speed = FRIGHTENED_SPEED;
+    currentDirection = -llVecNorm(currentDirection) * speed;
+    UpdateGhostSprite();
+}
+
+
+ApplySlowState(float newSpeed, float duration)
+{
+    if (isEaten)
+        return;
+
+    ResetEffects();
+    isSlowed = TRUE;
+    speed = newSpeed;
+    currentDirection = llVecNorm(currentDirection) * speed;
+    effectDuration = duration;
+    UpdateGhostSprite();
+}
+
+ApplyFreezeState(float duration)
+{
+    if (isEaten)
+        return;
+
+    ResetEffects();
+    isFrozen = TRUE;
+    speed = 0.0;
+    effectDuration = duration;
+    UpdateGhostSprite();
+}
+
+ApplyDistraction(vector target, float duration)
+{
+    if (isEaten || isFrozen)
+        return;
+
+    isDistracted = TRUE;
+    distractionTarget = target;
+    distractionDuration = duration;
+    currentDirection = -currentDirection;
+}
+
+BecomeEaten()
+{
+    isEaten = TRUE;
+    ResetEffects();
+    speed = NORMAL_SPEED;
+    currentDirection = llVecNorm(currentDirection) * speed;
+    isGhostOutside = TRUE;
+    llOwnerSay("Ghost eaten.");
+    ResetDistraction();
+    UpdateGhostSprite();
+}
+
+ResetDistraction()
+{
+    isDistracted = FALSE;
+    distractionDuration = 0.0;
+    distractionTarget = ZERO_VECTOR;
+}
+
+RespawnGhost()
+{
+    isEaten = FALSE;
+    ApplyNormalState();
+    isGhostOutside = FALSE;
+    llOwnerSay("Ghost respawned.");
+    ResetDistraction();
+    UpdateGhostSprite();
+}
+
+
+
+ResetGhost()
+{
+    canMove = FALSE;
+    isGhostOutside = TRUE;
+    isScatterMode = TRUE;
+    isEaten = FALSE;
+    ApplyNormalState();
+    currentDirection = <-0.5, 0.0, 0.0>;
+    llSetRegionPos(initialPosition);
+    ResetDistraction();
+    UpdateGhostSprite();
+}
+
 
 
 UpdateGhostSprite()
 {
     float frame = 0.0;
-    if(currentDirection.x > 0)      frame = 0.0; 
-    else if(currentDirection.x < 0) frame = 1.0; 
-    else if(currentDirection.y > 0) frame = 2.0; 
-    else if(currentDirection.y < 0) frame = 3.0; 
-    
+
+    if (currentDirection.x > 0)
+        frame = 0.0;
+    else if (currentDirection.x < 0)
+        frame = 1.0;
+    else if (currentDirection.y > 0)
+        frame = 2.0;
+    else if (currentDirection.y < 0)
+        frame = 3.0;
+
+    llSetTextureAnim(FALSE, 0, 0, 0, 0.0, 0.0, 0.0);
+
     if (isEaten)
     {
-        llSetTextureAnim(FALSE, 0, 0, 0, 0.0, 0.0, 0.0);
         llSetTexture("EatenGhost", ALL_SIDES);
-        llSetTextureAnim(0, 0, 4, 1, frame, 1.0, 0.0); 
+        llSetTextureAnim(ANIM_ON, 0, 4, 1, frame, 1.0, 0.0);
+    }
+    else if (isFrozen)
+    {
+        llSetTexture("SleepyBlinky", ALL_SIDES);
     }
     else if (isFrightened)
     {
-        llSetTextureAnim(FALSE, 0, 0, 0, 0.0, 0.0, 0.0);
         llSetTexture("FrightenedGhost", ALL_SIDES);
     }
     else if (isSlowed)
     {
-        llSetTextureAnim(FALSE, 0, 0, 0, 0.0, 0.0, 0.0);
         llSetTexture("SlowedBlinky", ALL_SIDES);
     }
     else
@@ -126,38 +194,87 @@ UpdateGhostSprite()
     }
 }
 
-ResetGhost()
+
+
+integer isPathClear(vector pos, vector dir)
 {
-    canMove = FALSE;             
-    isGhostOutside = TRUE; 
-    isScatterMode = TRUE;
-    isFrightened = FALSE;
-    isEaten = FALSE;
-    isSlowed = FALSE; 
-    speed = NORMAL_SPEED;
-    slowDuration = 0.0;          
-    
-    currentDirection = <-0.5, 0, 0>; 
-    llSetRegionPos(initialPosition);
-    llSetColor(<1, 1, 1>, ALL_SIDES);
-    
-    llSetTextureAnim(FALSE, 0, 0, 0, 0.0, 0.0, 0.0);
-    llSetTexture("RedGhost", ALL_SIDES);
-    UpdateGhostSprite();
+    if (isFrozen)
+        return FALSE;
+
+    vector startPoint = pos + (llVecNorm(dir) * 0.6);
+    vector endPosition = startPoint + (llVecNorm(dir) * 1.2);
+
+    list raycast = llCastRay(startPoint, endPosition,
+    [
+        RC_REJECT_TYPES,
+        RC_REJECT_AGENTS | RC_REJECT_LAND,
+
+        RC_DATA_FLAGS,
+        RC_GET_ROOT_KEY
+    ]);
+
+    integer result = llList2Integer(raycast, -1);
+
+    if (result > 0)
+    {
+        key hitKey = llList2Key(raycast, 0);
+        string hitName = llKey2Name(hitKey);
+
+        if ( checkName(hitName) != -1 || hitName == "Pellet" || hitName == "PowerPellet" )
+        {
+            return TRUE;
+        }
+        else if (hitName == "Pacman")
+        {
+            if (isFrightened && !isEaten)
+            {
+                BecomeEaten();
+            }
+            else if (!isFrightened && !isEaten)
+            {
+                llRegionSay(-99, "EAT_PACMAN");
+            }
+            return TRUE;
+        }
+        else if (hitName == "GhostGate")
+        {
+            if (isEaten)
+                return TRUE;
+
+            if (isGhostOutside)
+                return FALSE;
+
+            llSetRegionPos(outOfMazePosition);
+            isGhostOutside = TRUE;
+
+            return TRUE;
+        }
+        return FALSE;
+    }
+    return TRUE;
 }
 
-vector chooseRandomDirection(vector pos) 
+vector chooseRandomDirection(vector pos)
 {
-    list testDirs = [<speed,0,0>, <-speed,0,0>, <0,speed,0>, <0,-speed,0>];
+    list testDirs =
+    [
+        <speed,0,0>,
+        <-speed,0,0>,
+        <0,speed,0>,
+        <0,-speed,0>
+    ];
+
     list available = [];
+
     integer i;
-    
-    for (i = 0; i < 4; i++) 
+
+    for (i = 0; i < 4; i++)
     {
         vector d = llList2Vector(testDirs, i);
-        if (isPathClear(pos, d)) 
+
+        if (isPathClear(pos, d))
         {
-            if (d != -currentDirection) 
+            if (d != -currentDirection)
             {
                 available += [d];
             }
@@ -165,18 +282,65 @@ vector chooseRandomDirection(vector pos)
     }
 
     integer count = llGetListLength(available);
-    if (count == 0) 
+
+    if (count == 0)
         return -currentDirection;
 
-    integer r = (integer)llFrand(count);
-    return llList2Vector(available, r);
+    return llList2Vector(available, (integer)llFrand(count));
+}
+
+vector chooseDistractionDirection(vector pos)
+{
+    list testDirections = [<speed,0,0>, <-speed,0,0>, <0,speed,0>, <0,-speed,0>];
+
+    list available = [];
+
+    integer i;
+
+    for (i = 0; i < 4; i++)
+    {
+        vector d = llList2Vector(testDirections, i);
+
+        if (isPathClear(pos, d))
+        {
+            if (d != -currentDirection)
+            {
+                available += [d];
+            }
+        }
+    }
+
+    integer count = llGetListLength(available);
+
+    if (count == 0)
+        return -currentDirection;
+
+    vector bestDirection = llList2Vector(available, 0);
+
+    float minDistance = 999999.0;
+
+    for (i = 0; i < count; i++)
+    {
+        vector d = llList2Vector(available, i);
+
+        float dist = llVecDist(pos + d, distractionTarget);
+
+        if (dist < minDistance)
+        {
+            minDistance = dist;
+            bestDirection = d;
+        }
+    }
+
+    return bestDirection;
 }
 
 vector chooseBlinkyDirection(vector pos)
 {
-    vector targetPosition = housePosition; 
+    vector targetPosition = housePosition;
+
     list details = llGetObjectDetails(pacmanKey, [OBJECT_POS]);
-    
+
     if (isEaten)
     {
         targetPosition = housePosition;
@@ -189,74 +353,83 @@ vector chooseBlinkyDirection(vector pos)
         }
         else
         {
-            vector pacmanPosition = llList2Vector(details, 0);
-            targetPosition = pacmanPosition;
+            targetPosition = llList2Vector(details, 0);
         }
     }
-    list testDirections = [<speed,0,0>, <-speed,0,0>, <0,speed,0>, <0,-speed,0>];
+
+    list testDirections = [ <speed,0,0>, <-speed,0,0>, <0,speed,0>, <0,-speed,0>];
     list available = [];
+
     integer i;
-    
-    for (i = 0; i < 4; i++) 
+
+    for (i = 0; i < 4; i++)
     {
         vector d = llList2Vector(testDirections, i);
-        if (isPathClear(pos, d)) 
+
+        if (isPathClear(pos, d))
         {
-            if (d != -currentDirection) 
+            if (d != -currentDirection)
+            {
                 available += [d];
+            }
         }
     }
 
     integer count = llGetListLength(available);
-    if (count == 0) 
+
+    if (count == 0)
         return -currentDirection;
 
     vector bestDirection = llList2Vector(available, 0);
+
     float minDistance = 9999.0;
 
-    for (i = 0; i < count; i++) 
+    for (i = 0; i < count; i++)
     {
         vector d = llList2Vector(available, i);
         float dist = llVecDist(pos + d, targetPosition);
-        if (dist < minDistance) 
+
+        if (dist < minDistance)
         {
             minDistance = dist;
             bestDirection = d;
         }
     }
-    return bestDirection;    
+    return bestDirection;
 }
 
-default 
+default
 {
-    state_entry() 
+    state_entry()
     {
-        llSensorRepeat("Pacman", NULL_KEY, PASSIVE | SCRIPTED, 96.0, PI, 2.0);
+        llSensorRepeat( "Pacman", NULL_KEY, PASSIVE | SCRIPTED, 96.0, PI, 2.0);
+
         llListen(-100, "", NULL_KEY, "");
         llListen(-200, "", NULL_KEY, "");
         llListen(-300, "", NULL_KEY, "");
         llListen(777, "", NULL_KEY, "");
-        llSetRot(llEuler2Rot(<0,0,0>)); 
-        UpdateGhostSprite();
+
         llSetTimerEvent(0.1);
+        UpdateGhostSprite();
     }
-    
-    sensor(integer num) 
+
+    sensor(integer num)
     {
-        pacmanKey = llDetectedKey(0); 
+        pacmanKey = llDetectedKey(0);
     }
-    
+
     no_sensor()
     {
         pacmanKey = NULL_KEY;
     }
 
-    timer() 
+    timer()
     {
-        if(!canMove) return;
-        
-        vector pos = llGetPos();
+        if (!canMove)
+            return;
 
+        vector pos = llGetPos();
+        
         if (pacmanKey != NULL_KEY)
         {
             list pacmanDetails = llGetObjectDetails(pacmanKey, [OBJECT_POS]);
@@ -269,13 +442,7 @@ default
                 {
                     if (isFrightened && !isEaten)
                     {
-                        isEaten = TRUE;
-                        isFrightened = FALSE; 
-                        isSlowed = FALSE;
-                        isGhostOutside = TRUE; 
-                        speed = 1.0;
-                        currentDirection = llVecNorm(currentDirection) * speed;
-                        UpdateGhostSprite();
+                        BecomeEaten();
                     }
                     else if (!isFrightened && !isEaten)
                     {
@@ -286,89 +453,87 @@ default
                 }
             }
         }
-        if (slowDuration > 0) 
+        
+        if (effectDuration > 0.0)
         {
-            slowDuration -= 0.1;
-            if (slowDuration <= 0) 
+            effectDuration -= 0.1;
+
+            if (effectDuration <= 0.0)
             {
-                isSlowed = FALSE; 
-                speed = NORMAL_SPEED;
-                currentDirection = llVecNorm(currentDirection) * speed;
-                llSetColor(<1, 1, 1>, ALL_SIDES);
-                llOwnerSay("Ghost effect expired: Normal speed restored.");
-                UpdateGhostSprite(); 
+                ApplyNormalState();
             }
         }
-                
-        integer aheadClear = isPathClear(pos, currentDirection);
         
+        if (distractionDuration > 0.0)
+        {
+            distractionDuration -= 0.1;
+        
+            if (distractionDuration <= 0.0)
+            {
+                ResetDistraction();
+                currentDirection = -currentDirection;
+            }
+        }
+
+        if (isEaten)
+        {
+            if (llVecDist(pos, housePosition) < 0.6)
+            {
+                RespawnGhost();
+            }
+        }
+
+
+        if (speed <= 0.0)
+            return;
+
+        integer aheadClear = isPathClear(pos, currentDirection);
         float distX = llFabs(pos.x - snap(pos.x));
         float distY = llFabs(pos.y - snap(pos.y));
 
-        if ((distX < 0.25 && distY < 0.25) || !aheadClear) 
+        if ((distX < 0.25 && distY < 0.25) || !aheadClear)
         {
             vector nextDir;
 
             if (isEaten)
+            {
                 nextDir = chooseBlinkyDirection(pos);
-            else if(isGhostOutside && !isFrightened)
-                nextDir = chooseBlinkyDirection(pos);
-            else
+            }
+            else if (isFrightened)
+            {
                 nextDir = chooseRandomDirection(pos);
-            
-            if (nextDir != currentDirection) 
+            }
+            else if (isDistracted)
+            {
+                nextDir = chooseDistractionDirection(pos);
+            }
+            else if (isGhostOutside)
+            {
+                nextDir = chooseBlinkyDirection(pos);
+            }
+            else
+            {
+                nextDir = chooseRandomDirection(pos);
+            }
+
+            if (nextDir != currentDirection)
             {
                 currentDirection = nextDir;
-                pos.x = snap(pos.x); 
+
+                pos.x = snap(pos.x);
                 pos.y = snap(pos.y);
+
                 llSetRegionPos(pos);
                 UpdateGhostSprite();
             }
         }
 
-        if (isPathClear(pos, currentDirection)) 
+        if (isPathClear(pos, currentDirection))
         {
             llSetRegionPos(pos + currentDirection);
-        } 
-        else 
-        {
-            if(isGhostOutside)
-                currentDirection = chooseBlinkyDirection(pos);
-            else
-                currentDirection = chooseRandomDirection(pos);
-            UpdateGhostSprite();
-        }
-        
-        if (isEaten && llVecDist(llGetPos(), housePosition) < 0.6)
-        {
-            isEaten = FALSE;
-            isFrightened = FALSE;
-            isSlowed = FALSE;
-            isGhostOutside = FALSE;
-            currentDirection = llVecNorm(currentDirection) * speed;
-            
-            llSetTextureAnim(FALSE, 0, 0, 0, 0.0, 0.0, 0.0);
-            llSetTexture("RedGhost", ALL_SIDES);
-            
-            llOwnerSay("Inside Ghost House. Respawning...");
-            UpdateGhostSprite();
         }
     }
-    
-    link_message(integer sender_num, integer num, string str, key id)
-    {
-        if (str == "SLOW_ON")
-        {
-            isSlowed = TRUE;
-            speed = SLOW_SPEED;
-            currentDirection = llVecNorm(currentDirection) * speed;
-            slowDuration = 5.0;
-            llSetColor(<0, 0, 1>, ALL_SIDES);
-            llOwnerSay("Ghost effect: SLOWED");
-            UpdateGhostSprite();
-        }
-    }
-    
+
     listen(integer channel, string name, key id, string msg)
     {
         if (channel == -100)
@@ -383,65 +548,72 @@ default
                 ResetGhost();
             }
         }
-        else if (channel == -200 && !isEaten) 
+        else if (channel == -200 && !isEaten)
         {
-            if (msg == "SCATTER_MODE" && isScatterMode == FALSE)
+            if (msg == "SCATTER_MODE")
             {
                 isScatterMode = TRUE;
                 currentDirection = -currentDirection;
                 UpdateGhostSprite();
-                llOwnerSay("Ghost: Entering Scatter");
             }
-            else if (msg == "CHASE_MODE" && isScatterMode == TRUE)
+            else if (msg == "CHASE_MODE")
             {
                 isScatterMode = FALSE;
                 currentDirection = -currentDirection;
                 UpdateGhostSprite();
-                llOwnerSay("Ghost: Entering Chase");
             }
         }
         else if (channel == -300)
         {
             if (msg == "GHOST_FRIGHT")
             {
-                if(isEaten || !isGhostOutside) 
-                    return; 
-                
-                llOwnerSay("BUU");
-                isFrightened = TRUE;    
-                isSlowed = FALSE;
-                speed = FRIGHTENED_SPEED;
-                
-                currentDirection = llVecNorm(currentDirection) * speed;
-                currentDirection = -currentDirection;
-                
-                UpdateGhostSprite();
+                ApplyFrightenedState();
             }
             else if (msg == "GHOST_FRIGHT_STOP")
             {
-                if (isEaten || !isGhostOutside) 
+                if (!isEaten)
                 {
-                    isFrightened = FALSE;
-                    return;
+                    ApplyNormalState();
                 }
-                
-                isFrightened = FALSE;
-                speed = NORMAL_SPEED;
-                currentDirection = llVecNorm(currentDirection) * speed;
-                
-                UpdateGhostSprite();
-                llOwnerSay("Normal Mode Restored");
             }
         }
-        else if (channel == 777 && canMove && !isEaten && !isSlowed)
+        else if (channel == 777)
         {
-            if (msg == "SLOW")
+            if (!canMove || isEaten)
+                return;
+                
+            if (llSubStringIndex(msg, "SLOW") == 0)
             {
-                isSlowed = TRUE;
-                speed = SLOW_SPEED;
-                currentDirection = llVecNorm(currentDirection) * speed;
-                slowDuration = 5.0;
-                UpdateGhostSprite();
+                float s = SLOW_SPEED;
+                float d = 5.0;
+
+                if (llSubStringIndex(msg, "SLOW_") == 0)
+                {
+                    s = (float)llDeleteSubString(msg, 0, 4);
+                }
+
+                ApplySlowState(s, d);
+            }
+            else if (llSubStringIndex(msg, "FREEZE") == 0)
+            {
+                float d = 4.0;
+
+                if (llSubStringIndex(msg, "FREEZE_") == 0)
+                {
+                    d = (float)llDeleteSubString(msg, 0, 6);
+                }
+
+                ApplyFreezeState(d);
+            }
+            else if (msg == "DISTRACT")
+            {
+                ApplyDistraction( blinkyHomeCorner, 25.0 );
+            }
+            else if (llSubStringIndex(msg, "DISTRACT=") == 0)
+            {
+                vector target = (vector)llDeleteSubString(msg, 0, 8);
+
+                ApplyDistraction(target, 25.0);
             }
         }
     }
