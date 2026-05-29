@@ -10,6 +10,9 @@ integer controls_to_track;
 integer canMove = FALSE;
 integer isEaten = FALSE;
 
+integer isCamouflaged = FALSE;
+float camouflageDuration;
+
 float MIN_X = 96.0;
 float MAX_X = 160.0;
 float MIN_Y = 108.0;
@@ -17,6 +20,67 @@ float MAX_Y = 152.0;
 
 float snap(float val) {
     return (float)llRound(val / grid_unit) * grid_unit;
+}
+
+ApplyCamouflage(float time)
+{
+    isCamouflaged = TRUE;
+    camouflageDuration = time;
+    llSetObjectName("YellowGhost");
+    llSetRot(llEuler2Rot(<0,0,0>));
+    UpdateCamouflageSprite();
+    llOwnerSay("Camouflage Activated!");
+}
+
+ResetCamouflage()
+{
+    isCamouflaged = FALSE;
+    camouflageDuration = 0.0;
+    llSetObjectName("Pacman");
+    llSetTextureAnim(FALSE, 0,0,0,0,0,0);
+    llSetTexture("PacmanAnim", ALL_SIDES);
+    
+    llScaleTexture(1.0, 1.0, ALL_SIDES);
+    llOffsetTexture(0.0, 0.0, ALL_SIDES);
+    
+    llSetTextureAnim(ANIM_ON | LOOP, 0, 2, 1, 0.0, 2.0, 5.0);
+    
+    float angle = llAtan2(currentDirection.y, currentDirection.x);
+    llSetRot(llEuler2Rot(<0, 0, angle>));
+
+    llOwnerSay("Camouflage Ended!");
+}
+
+UpdateCamouflageSprite()
+{
+    if(!isCamouflaged)
+        return;
+
+    
+    vector visualDirection = currentDirection;
+    if(isCamouflaged)
+    {
+        visualDirection = nextDirection;
+    }
+
+    float frame = 0.0;
+
+    if (currentDirection.x > 0)
+        frame = 0.0;
+    else if (currentDirection.x < 0)
+        frame = 1.0;
+    else if (currentDirection.y > 0)
+        frame = 2.0;
+    else if (currentDirection.y < 0)
+        frame = 3.0;
+
+    llSetTextureAnim(FALSE, 0,0,0,0,0,0);
+    llSetTexture("YellowGhost", ALL_SIDES);
+    
+    llScaleTexture(0.25, 1.0, ALL_SIDES);
+    llOffsetTexture(-0.125, 0.0, ALL_SIDES);
+    
+    llSetTextureAnim(ANIM_ON, ALL_SIDES, 4, 1, frame, frame, 0.0);
 }
 
 integer isPathClear(vector pos, vector dir) 
@@ -59,11 +123,10 @@ ResetPacman()
 {
     llSetRegionPos(<128.0, 110.0, 21.5>);
     canMove = FALSE;
-    //isEaten = FALSE;
     speed = 0.5;
     currentDirection = <speed, 0.0, 0.0>; 
     nextDirection = <speed, 0.0, 0.0>;   
-    
+    ResetCamouflage();
     llSetRot(llEuler2Rot(<0, 0, 0> * DEG_TO_RAD)); 
 }
 
@@ -137,9 +200,26 @@ default
                     pos.y = snap(pos.y);
                     llSetRegionPos(pos); 
                     
-                    float angle = llAtan2(currentDirection.y, currentDirection.x);
-                    llSetRot(llEuler2Rot(<0, 0, angle>));
+                    if(isCamouflaged)
+                    {
+                        UpdateCamouflageSprite();
+                    }
+                    else
+                    {
+                        float angle = llAtan2(currentDirection.y, currentDirection.x);
+                        llSetRot(llEuler2Rot(<0, 0, angle>));
+                    }
                 }
+            }
+        }
+        
+        if (camouflageDuration > 0.0)
+        {
+            camouflageDuration -= 0.1;
+        
+            if (camouflageDuration <= 0.0)
+            {
+                ResetCamouflage();
             }
         }
 
@@ -175,6 +255,10 @@ default
             llRegionSay(-98, "END_GAME");
             llRegionSay(-500, "RESET"); 
             llDie();
+        }
+        else if(msg == "CAMOUFLAGE")
+        {
+            ApplyCamouflage(10.0);
         }
     }
 }

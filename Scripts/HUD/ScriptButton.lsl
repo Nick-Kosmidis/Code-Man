@@ -2,9 +2,14 @@ string TEMPLATE_NAME = "TemplateScript";
 string SLOW_SCRIPT = "SlowScript";
 string FREEZE_SCRIPT = "FreezeScript";
 string DISTRACTION_SCRIPT = "DistractionScript";
+string CAMOUFLAGE_SCRIPT = "CamouflageScript";
 string currentOwner;
 integer GHOST_CHANNEL = 777;
+integer PACMAN_CHANNEL = -99;
 integer canCode = FALSE;
+
+list scripts = [SLOW_SCRIPT, FREEZE_SCRIPT, DISTRACTION_SCRIPT, CAMOUFLAGE_SCRIPT];
+list commands = ["EXECUTE_SLOW_LOGIC", "EXECUTE_FREEZE_LOGIC", "EXECUTE_DISTRACT_LOGIC", "EXECUTE_CAMOUFLAGE_LOGIC"];
 
 list ADMINS =
 [
@@ -54,11 +59,17 @@ default
 
         if (str == "CHECK_AND_RUN")
         {
-            if (llGetInventoryType(SLOW_SCRIPT) == INVENTORY_SCRIPT)
+            integer length = llGetListLength(scripts);
+            integer index = (integer)llFrand(length);
+            
+            string selectedScript = llList2String(scripts, index);
+            string selectedCommand = llList2String(commands, index);
+            
+            if (llGetInventoryType(selectedScript) == INVENTORY_SCRIPT)
             {
-                llOwnerSay("Script found! Executing player logic...");
-                llSetScriptState(SLOW_SCRIPT, TRUE); 
-                llMessageLinked(LINK_SET, 100, "EXECUTE_USER_LOGIC", NULL_KEY);
+                llOwnerSay("Random selection: " + selectedScript + " found! Executing player logic...");
+                llSetScriptState(selectedScript, TRUE); 
+                llMessageLinked(LINK_SET, 100, selectedCommand, NULL_KEY);
             }
             else
             {
@@ -102,6 +113,19 @@ default
             else
             {
                 llOwnerSay("Error: 'DistractionScript' not found. Please drag and drop your script onto the HUD first!");
+            }
+        }
+        else if (str == "CHECK_AND_RUN_CAMOUFLAGE")
+        {
+            if (llGetInventoryType(CAMOUFLAGE_SCRIPT) == INVENTORY_SCRIPT)
+            {
+                llOwnerSay("CamouflageScript found! Executing player logic...");
+                llSetScriptState(CAMOUFLAGE_SCRIPT, TRUE); 
+                llMessageLinked(LINK_SET, 100, "EXECUTE_CAMOUFLAGE_LOGIC", NULL_KEY);
+            }
+            else
+            {
+                llOwnerSay("Error: 'CamouflageScript' not found. Please drag and drop your script onto the HUD first!");
             }
         }
         else 
@@ -160,6 +184,11 @@ default
                     llRegionSay(GHOST_CHANNEL, "DISTRACT");
                     llOwnerSay("Broadcasted Scatter DISTRACT command to Ghosts.");
                 }
+                else if(clean_str == "CAMOUFLAGE")
+                {
+                    llRegionSay(PACMAN_CHANNEL, clean_str);
+                    llOwnerSay("Broadcasted CAMOUFLAGE to Pacman");
+                }
             }
         }
     }
@@ -182,6 +211,11 @@ default
             {
                 llOwnerSay("Success: 'DistractionScript' received and stored in HUD Root!");
                 llSetScriptState(DISTRACTION_SCRIPT, TRUE);
+            }
+            if (llGetInventoryType(CAMOUFLAGE_SCRIPT) == INVENTORY_SCRIPT)
+            {
+                llOwnerSay("Success: 'CamouflageScript' received and stored in HUD Root!");
+                llSetScriptState(CAMOUFLAGE_SCRIPT, TRUE);
             }
         }
     }
