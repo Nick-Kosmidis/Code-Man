@@ -2,13 +2,26 @@ string TEMPLATE_NAME = "TemplateScript";
 string SLOW_SCRIPT = "SlowScript";
 string FREEZE_SCRIPT = "FreezeScript";
 string DISTRACTION_SCRIPT = "DistractionScript";
+string currentOwner;
 integer GHOST_CHANNEL = 777;
+integer canCode = FALSE;
+
+list ADMINS =
+[
+    "a33d8e61-db24-4475-88ec-b292c0de124e"
+];
+
+integer IsAdmin()
+{
+    return llListFindList(ADMINS, currentOwner) != -1;
+}
 
 default
 {
     state_entry()
     {
         llAllowInventoryDrop(TRUE);
+        llListen(-99, "", NULL_KEY, "CODE_ACTIVATED");
     }
 
     touch_start(integer total_number)
@@ -17,9 +30,28 @@ default
         llOwnerSay("Giving you the Slow Logic Template.");
         llGiveInventory(user, TEMPLATE_NAME);
     }
+    
+    listen(integer channel, string name, key id, string msg)
+    {
+        canCode = TRUE;
+
+        llOwnerSay("Power-Up Activated: Now you can code");
+    }
 
     link_message(integer sender_num, integer num, string str, key id)
     {
+        currentOwner = (string)llGetOwner();
+        
+        if(!IsAdmin() && !canCode)
+        {
+            llOwnerSay("You dont have the ability to code");
+            return;
+        }
+        else
+        {
+            llOwnerSay("You can code");
+        }
+
         if (str == "CHECK_AND_RUN")
         {
             if (llGetInventoryType(SLOW_SCRIPT) == INVENTORY_SCRIPT)

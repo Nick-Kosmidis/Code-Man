@@ -43,7 +43,7 @@ integer isPathClear(vector pos, vector dir)
         list details = llGetObjectDetails(hitKey, [OBJECT_NAME]);
         string hitName = llList2String(details, 0);
         
-        if (hitName == "PowerPellet" || hitName == "Pellet") 
+        if (hitName == "PowerPellet" || hitName == "Pellet" || hitName == "PowerUp") 
         {
             llRegionSayTo(hitKey, -500, "EATEN");    
             return TRUE;
