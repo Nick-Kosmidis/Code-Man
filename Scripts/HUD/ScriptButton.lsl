@@ -3,13 +3,14 @@ string SLOW_SCRIPT = "SlowScript";
 string FREEZE_SCRIPT = "FreezeScript";
 string DISTRACTION_SCRIPT = "DistractionScript";
 string CAMOUFLAGE_SCRIPT = "CamouflageScript";
+string TELEPORT_SCRIPT = "TeleportScript";
 string currentOwner;
 integer GHOST_CHANNEL = 777;
 integer PACMAN_CHANNEL = -99;
 integer canCode = FALSE;
 
-list scripts = [SLOW_SCRIPT, FREEZE_SCRIPT, DISTRACTION_SCRIPT, CAMOUFLAGE_SCRIPT];
-list commands = ["EXECUTE_SLOW_LOGIC", "EXECUTE_FREEZE_LOGIC", "EXECUTE_DISTRACT_LOGIC", "EXECUTE_CAMOUFLAGE_LOGIC"];
+list scripts = [SLOW_SCRIPT, FREEZE_SCRIPT, DISTRACTION_SCRIPT, CAMOUFLAGE_SCRIPT, TELEPORT_SCRIPT];
+list commands = ["EXECUTE_SLOW_LOGIC", "EXECUTE_FREEZE_LOGIC", "EXECUTE_DISTRACT_LOGIC", "EXECUTE_CAMOUFLAGE_LOGIC", "EXECUTE_TELEPORT_LOGIC"];
 
 list ADMINS =
 [
@@ -128,6 +129,19 @@ default
                 llOwnerSay("Error: 'CamouflageScript' not found. Please drag and drop your script onto the HUD first!");
             }
         }
+        else if (str == "CHECK_AND_RUN_TELEPORT")
+        {
+            if (llGetInventoryType(TELEPORT_SCRIPT) == INVENTORY_SCRIPT)
+            {
+                llOwnerSay("TeleportScript found! Executing player logic...");
+                llSetScriptState(TELEPORT_SCRIPT, TRUE); 
+                llMessageLinked(LINK_SET, 100, "EXECUTE_TELEPORT_LOGIC", NULL_KEY);
+            }
+            else
+            {
+                llOwnerSay("Error: 'TeleportScript' not found. Please drag and drop your script onto the HUD first!");
+            }
+        }
         else 
         {
             string clean_str = str;
@@ -139,7 +153,17 @@ default
                 string command = llStringTrim(llList2String(parts, 0), STRING_TRIM);
                 string value = llStringTrim(llList2String(parts, 1), STRING_TRIM);
                 
-                if (command == "SLOW")
+                if (llSubStringIndex(clean_str, "CAMOUFLAGE") == 0)
+                {
+                    llRegionSay(PACMAN_CHANNEL, clean_str);
+                    llOwnerSay("Direct Broadcast to Pacman: " + clean_str);
+                }
+                else if (llSubStringIndex(clean_str, "TELEPORT") == 0) // Διορθώθηκε σε else if
+                {
+                    llRegionSay(PACMAN_CHANNEL, clean_str);
+                    llOwnerSay("Direct Broadcast to Pacman: " + clean_str);
+                }
+                else if (command == "SLOW")
                 {
                     if((float)value < 0)
                     {
@@ -189,6 +213,11 @@ default
                     llRegionSay(PACMAN_CHANNEL, clean_str);
                     llOwnerSay("Broadcasted CAMOUFLAGE to Pacman");
                 }
+                else if(clean_str == "TELEPORT") // Προστέθηκε για να πιάνει το σκέτο TELEPORT
+                {
+                    llRegionSay(PACMAN_CHANNEL, clean_str);
+                    llOwnerSay("Broadcasted TELEPORT to Pacman");
+                }
             }
         }
     }
@@ -216,6 +245,11 @@ default
             {
                 llOwnerSay("Success: 'CamouflageScript' received and stored in HUD Root!");
                 llSetScriptState(CAMOUFLAGE_SCRIPT, TRUE);
+            }
+            if (llGetInventoryType(TELEPORT_SCRIPT) == INVENTORY_SCRIPT)
+            {
+                llOwnerSay("Success: 'TeleportScript' received and stored in HUD Root!");
+                llSetScriptState(TELEPORT_SCRIPT, TRUE);
             }
         }
     }
