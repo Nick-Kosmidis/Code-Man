@@ -4,13 +4,16 @@ string FREEZE_SCRIPT = "FreezeScript";
 string DISTRACTION_SCRIPT = "DistractionScript";
 string CAMOUFLAGE_SCRIPT = "CamouflageScript";
 string TELEPORT_SCRIPT = "TeleportScript";
+string ENERGY_SCRIPT = "EnergyScript";
 string currentOwner;
+
 integer GHOST_CHANNEL = 777;
 integer PACMAN_CHANNEL = -99;
+integer HUD_CHANNEL = -98;
 integer canCode = FALSE;
 
-list scripts = [SLOW_SCRIPT, FREEZE_SCRIPT, DISTRACTION_SCRIPT, CAMOUFLAGE_SCRIPT, TELEPORT_SCRIPT];
-list commands = ["EXECUTE_SLOW_LOGIC", "EXECUTE_FREEZE_LOGIC", "EXECUTE_DISTRACT_LOGIC", "EXECUTE_CAMOUFLAGE_LOGIC", "EXECUTE_TELEPORT_LOGIC"];
+list scripts = [SLOW_SCRIPT, FREEZE_SCRIPT, DISTRACTION_SCRIPT, CAMOUFLAGE_SCRIPT, TELEPORT_SCRIPT, ENERGY_SCRIPT];
+list commands = ["EXECUTE_SLOW_LOGIC", "EXECUTE_FREEZE_LOGIC", "EXECUTE_DISTRACT_LOGIC", "EXECUTE_CAMOUFLAGE_LOGIC", "EXECUTE_TELEPORT_LOGIC", "EXECUTE_ENERGY_LOGIC"];
 
 list ADMINS =
 [
@@ -27,7 +30,8 @@ default
     state_entry()
     {
         llAllowInventoryDrop(TRUE);
-        llListen(-99, "", NULL_KEY, "CODE_ACTIVATED");
+        llListen(HUD_CHANNEL, "", NULL_KEY, "");
+        llListen(PACMAN_CHANNEL, "", NULL_KEY, "CODE_ACTIVATED");
     }
 
     touch_start(integer total_number)
@@ -39,9 +43,17 @@ default
     
     listen(integer channel, string name, key id, string msg)
     {
-        canCode = TRUE;
-
-        llOwnerSay("Power-Up Activated: Now you can code");
+        if(msg == "CODE_ACTIVATED")
+        {
+            canCode = TRUE;
+            llOwnerSay("Power-Up Activated: Now you can code");
+        }
+        else if(llSubStringIndex(msg, "ENERGY_APPROVED=") == 0)
+        {
+            string approvedCmd = llGetSubString(msg, 16, -1);
+            llRegionSay(GHOST_CHANNEL, approvedCmd);
+            llOwnerSay("Broadcasted " + approvedCmd + " to Ghosts.");
+        }
     }
 
     link_message(integer sender_num, integer num, string str, key id)
@@ -74,7 +86,7 @@ default
             }
             else
             {
-                llOwnerSay("Error: 'SlowScript' not found. Please drag and drop your script onto the HUD first!");
+                llOwnerSay("Error: Selected script not found. Please drag and drop your script onto the HUD first!");
             }
         }
         else if (str == "CHECK_AND_RUN_SLOW")
@@ -142,6 +154,19 @@ default
                 llOwnerSay("Error: 'TeleportScript' not found. Please drag and drop your script onto the HUD first!");
             }
         }
+        else if (str == "CHECK_AND_RUN_ENERGY")
+        {
+            if (llGetInventoryType(ENERGY_SCRIPT) == INVENTORY_SCRIPT)
+            {
+                llOwnerSay("EnergyScript found! Executing player logic...");
+                llSetScriptState(ENERGY_SCRIPT, TRUE); 
+                llMessageLinked(LINK_SET, 100, "EXECUTE_ENERGY_LOGIC", NULL_KEY);
+            }
+            else
+            {
+                llOwnerSay("Error: 'EnergyScript' not found. Please drag and drop your script onto the HUD first!");
+            }
+        }
         else 
         {
             string clean_str = str;
@@ -153,15 +178,17 @@ default
                 string command = llStringTrim(llList2String(parts, 0), STRING_TRIM);
                 string value = llStringTrim(llList2String(parts, 1), STRING_TRIM);
                 
-                if (llSubStringIndex(clean_str, "CAMOUFLAGE") == 0)
+                if (command == "ENERGY_REFILL")
                 {
                     llRegionSay(PACMAN_CHANNEL, clean_str);
-                    llOwnerSay("Direct Broadcast to Pacman: " + clean_str);
                 }
-                else if (llSubStringIndex(clean_str, "TELEPORT") == 0) // Διορθώθηκε σε else if
+                else if (llSubStringIndex(clean_str, "CAMOUFLAGE") == 0)
                 {
-                    llRegionSay(PACMAN_CHANNEL, clean_str);
-                    llOwnerSay("Direct Broadcast to Pacman: " + clean_str);
+                    llRegionSay(PACMAN_CHANNEL, "CHECK_ENERGY=25:" + clean_str);
+                }
+                else if (llSubStringIndex(clean_str, "TELEPORT") == 0)
+                {
+                    llRegionSay(PACMAN_CHANNEL, "CHECK_ENERGY=15:" + clean_str);
                 }
                 else if (command == "SLOW")
                 {
@@ -169,55 +196,32 @@ default
                     {
                         llOwnerSay("Speed cannot be negative"); 
                     }
-                    llRegionSay(GHOST_CHANNEL, "SLOW_" + value);
-                    llOwnerSay("Broadcasted SLOW for " + value + " seconds to Ghosts.");
+                    llRegionSay(PACMAN_CHANNEL, "CHECK_ENERGY=10:SLOW_" + value);
                 }
                 else if (command == "FREEZE")
                 {
-                    if((float)value > 10)
-                    {
-                        llOwnerSay("Max freeze duration is 10 seconds");
-                        llRegionSay(GHOST_CHANNEL, "FREEZE_10");
-                    }
-                    else
-                    {
-                        llRegionSay(GHOST_CHANNEL, "FREEZE_" + value);
-                        llOwnerSay("Broadcasted FREEZE for " + value + " seconds to Ghosts.");   
-                    }
+                    if((float)value > 10) value = "10";
+                    llRegionSay(PACMAN_CHANNEL, "CHECK_ENERGY=20:FREEZE_" + value);
                 }
                 else if(command == "DISTRACT")
                 {
-                    llRegionSay(GHOST_CHANNEL, clean_str);
-                    llOwnerSay("Broadcasted DISTRACT Target Point: " + value + " to Ghosts.");
+                    llRegionSay(PACMAN_CHANNEL, "CHECK_ENERGY=5:DISTRACT=" + value);
                 }
             }
             else
             {
                 if (clean_str == "SLOW")
-                {
-                    llRegionSay(GHOST_CHANNEL, "SLOW");
-                    llOwnerSay("Broadcasted default SLOW command to Ghosts.");
-                }
+                    llRegionSay(PACMAN_CHANNEL, "CHECK_ENERGY=10:SLOW");
                 else if (clean_str == "FREEZE")
-                {
-                    llRegionSay(GHOST_CHANNEL, "FREEZE");
-                    llOwnerSay("Broadcasted default FREEZE command to Ghosts.");
-                }
-                else if(clean_str == "DISTRACT")
-                {
-                    llRegionSay(GHOST_CHANNEL, "DISTRACT");
-                    llOwnerSay("Broadcasted Scatter DISTRACT command to Ghosts.");
-                }
-                else if(clean_str == "CAMOUFLAGE")
-                {
-                    llRegionSay(PACMAN_CHANNEL, clean_str);
-                    llOwnerSay("Broadcasted CAMOUFLAGE to Pacman");
-                }
-                else if(clean_str == "TELEPORT") // Προστέθηκε για να πιάνει το σκέτο TELEPORT
-                {
-                    llRegionSay(PACMAN_CHANNEL, clean_str);
-                    llOwnerSay("Broadcasted TELEPORT to Pacman");
-                }
+                    llRegionSay(PACMAN_CHANNEL, "CHECK_ENERGY=20:FREEZE");
+                else if (clean_str == "DISTRACT")
+                    llRegionSay(PACMAN_CHANNEL, "CHECK_ENERGY=5:DISTRACT");
+                else if (clean_str == "CAMOUFLAGE")
+                    llRegionSay(PACMAN_CHANNEL, "CHECK_ENERGY=25:CAMOUFLAGE");
+                else if (clean_str == "TELEPORT")
+                    llRegionSay(PACMAN_CHANNEL, "CHECK_ENERGY=15:TELEPORT");
+                else if (clean_str == "ENERGY_REFILL")
+                    llRegionSay(PACMAN_CHANNEL, "ENERGY_REFILL");
             }
         }
     }
@@ -226,31 +230,23 @@ default
     {
         if (change & CHANGED_INVENTORY)
         {
-            if (llGetInventoryType(SLOW_SCRIPT) == INVENTORY_SCRIPT)
-            {
-                llOwnerSay("Success: 'SlowScript' received and stored in HUD Root!");
+            if (llGetInventoryType(SLOW_SCRIPT) == INVENTORY_SCRIPT) 
                 llSetScriptState(SLOW_SCRIPT, TRUE);
-            }
-            if (llGetInventoryType(FREEZE_SCRIPT) == INVENTORY_SCRIPT)
-            {
-                llOwnerSay("Success: 'FreezeScript' received and stored in HUD Root!");
-                llSetScriptState(FREEZE_SCRIPT, TRUE);
-            }
-            if (llGetInventoryType(DISTRACTION_SCRIPT) == INVENTORY_SCRIPT)
-            {
-                llOwnerSay("Success: 'DistractionScript' received and stored in HUD Root!");
-                llSetScriptState(DISTRACTION_SCRIPT, TRUE);
-            }
-            if (llGetInventoryType(CAMOUFLAGE_SCRIPT) == INVENTORY_SCRIPT)
-            {
-                llOwnerSay("Success: 'CamouflageScript' received and stored in HUD Root!");
-                llSetScriptState(CAMOUFLAGE_SCRIPT, TRUE);
-            }
-            if (llGetInventoryType(TELEPORT_SCRIPT) == INVENTORY_SCRIPT)
-            {
-                llOwnerSay("Success: 'TeleportScript' received and stored in HUD Root!");
+                
+            if (llGetInventoryType(FREEZE_SCRIPT) == INVENTORY_SCRIPT) 
+                llSetScriptState(FREEZE_SCRIPT, TRUE); 
+                
+            if (llGetInventoryType(DISTRACTION_SCRIPT) == INVENTORY_SCRIPT)  
+                llSetScriptState(DISTRACTION_SCRIPT, TRUE); 
+                
+            if (llGetInventoryType(CAMOUFLAGE_SCRIPT) == INVENTORY_SCRIPT) 
+                llSetScriptState(CAMOUFLAGE_SCRIPT, TRUE); 
+                
+            if (llGetInventoryType(TELEPORT_SCRIPT) == INVENTORY_SCRIPT) 
                 llSetScriptState(TELEPORT_SCRIPT, TRUE);
-            }
+                
+            if (llGetInventoryType(ENERGY_SCRIPT) == INVENTORY_SCRIPT) 
+                llSetScriptState(ENERGY_SCRIPT, TRUE); 
         }
     }
 }
