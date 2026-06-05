@@ -32,7 +32,7 @@ default
             llOwnerSay("\n=== CODEMAN-SCRIPT FRAMEWORK OVERVIEW ===");
             llOwnerSay("Codeman-Script is a programmable scripting framework for the Pacman environment allowing custom scripts to dynamically modify mechanics, ghost behavior, and abilities. Each script consumes energy validated by Pacman.");
             
-            llOwnerSay("\n🏢 SOFTWARE ARCHITECTURE (3 Primary Entities):");
+            llOwnerSay("\n SOFTWARE ARCHITECTURE (3 Primary Entities):");
             llOwnerSay("1. HUD (Code Editor Interface):\n" +
                        "• Responsibilities: Executing player scripts, validating availability, broadcasting requests, managing templates, triggering effects.\n" +
                        "• Note: Does not directly modify game state; sends requests to components.");
@@ -108,26 +108,26 @@ default
         {
             llOwnerSay("\n=== POWER-UPS & VARIATIONS ===");
             
-            llOwnerSay("\n1. SLOW (Cost: 10 Energy)\n" +
+            llOwnerSay("\n1️. SLOW (Cost: 10 Energy)\n" +
                        "Reduces the movement speed of all ghosts.\n" +
                        "• \"SLOW\" : Applies default slowdown effect.\n" +
                        "• \"SLOW=X\" : Slows all ghosts with X speed.\n" +
                        "• Use Cases: Escaping nearby ghosts or combining with Teleport.");
                        
-            llOwnerSay("\n2. FREEZE (Cost: 20 Energy)\n" +
+            llOwnerSay("\n2️. FREEZE (Cost: 20 Energy)\n" +
                        "Completely disables ghost movement.\n" +
                        "• \"FREEZE\" : Applies default freeze duration.\n" +
                        "• \"FREEZE=X\" : Freezes all ghosts for X seconds.\n" +
                        "• Use Cases: Escape situations, safe pellet collection, or strategic repositioning.");
                        
-            llOwnerSay("\n3. DISTRACT (Cost: 5 Energy)\n" +
+            llOwnerSay("\n3️. DISTRACT (Cost: 5 Energy)\n" +
                        "Manipulates ghost navigation behavior toward a location.\n" +
                        "• \"DISTRACT\" : Activates default distraction Scatter mode.\n" +
                        "• \"DISTRACT=<X,Y,Z>\" : Redirects ghosts toward specific vector coordinates.\n" +
                        "• Use Cases: Creating safe routes or pulling ghosts away from objectives.\n" +
                        "Note: Can be used as a foundation for advanced mechanics like temporary decoy objects.");
                        
-            llOwnerSay("\n4. CAMOUFLAGE (Cost: 25 Energy)\n" +
+            llOwnerSay("\n4️. CAMOUFLAGE (Cost: 25 Energy)\n" +
                        "Temporarily transforms Pacman into a ghost-like entity.\n" +
                        "• \"CAMOUFLAGE\" : Pacman becomes a yellow ghost.\n" +
                        "• \"CAMOUFLAGE=GHOST_NAME\" : Transforms into Blinky/Inky/Pinky/Clyde appearance.\n" +

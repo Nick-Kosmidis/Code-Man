@@ -4,6 +4,7 @@ vector currentDirection = <0.5, 0.0, 0.0>;
 float speed = 0.5;
 float currentSpeed = 0.5;
 float pacmanRadius = 2.0; 
+float teleportFreezeUntil = 0.0;
 
 integer lifes = 3;
 integer controls_to_track;
@@ -28,6 +29,7 @@ float MAX_Y = 152.0;
 integer HUD_CHANNEL = -98;
 
 integer energy = 100;
+
 
 list SAFE_TILES = [<108.0, 110.0, 21.5>, <110.0, 110.0, 21.5>, <112.0, 110.0, 21.5>, <114.0, 110.0, 21.5>, <116.0, 110.0, 21.5>, <118.0, 110.0, 21.5>, 
 <120.0, 110.0, 21.5>, <122.0, 110.0, 21.5>, <124.0, 110.0, 21.5>, <126.0, 110.0, 21.5>, <128.0, 110.0, 21.5>, <130.0, 110.0, 21.5>, <132.0, 110.0, 21.5>, <134.0, 110.0, 21.5>,
@@ -103,13 +105,22 @@ vector FindRandomSafeLocation()
     return llGetPos();
 }
 
+StunPacman()
+{
+    if(llFrand(1.0) > 0.5)
+    {
+        llOwnerSay("Pacman cant move for 5 seconds!");
+        teleportFreezeUntil = llGetTime() + 5.0;   
+    }
+}
+
 ApplyRandomTeleport()
 {
     integer safeTilesCount = llGetListLength(SAFE_TILES);
-    llOwnerSay("There are " + (string)safeTilesCount + "tiles");
     integer randomTileIndex = (integer)llFrand(safeTilesCount);
     vector targetTile = llList2Vector(SAFE_TILES, randomTileIndex);
     llSetRegionPos(targetTile);
+    StunPacman();
 }
 
 integer isTileSafe(vector tile)
@@ -191,14 +202,14 @@ ApplySteppedTeleport(integer step, vector direction)
     if(isTileSafe(targetTile))
     {
         llSetRegionPos(targetTile);
-        llOwnerSay("Teleport safe! Moved " + (string)step + " tiles.");
     }
     else
     {
-        llOwnerSay("Target tile was unsafe. Searching for closest safe tile...");
         vector safeTile = GetClosestTileByStep(targetTile, step, direction);
         llSetRegionPos(safeTile);
     }
+
+    StunPacman();
 }
 
 ApplyTeleport(vector targetTile)
@@ -210,14 +221,14 @@ ApplyTeleport(vector targetTile)
     if(isTileSafe(targetTile))
     {
         llSetRegionPos(targetTile);
-        llOwnerSay("Teleport directly to coordinates successful!");
     }
     else
     {
-        llOwnerSay("Target coordinates inside obstacle. Calculating closest alternatives...");
         vector safeTile = GetClosestTile(targetTile);
         llSetRegionPos(safeTile);
     }
+
+    StunPacman();
 }
 
 ParseTeleport(string msg)
@@ -413,6 +424,10 @@ integer isPathClear(vector pos, vector dir)
             llRegionSayTo(hitKey, -500, "EATEN");    
             return TRUE;
         }
+        else if (hitName == "GhostBarrier")
+        {
+            return TRUE;
+        }
         return FALSE; 
     }
     return TRUE;
@@ -480,6 +495,12 @@ state_entry()
     timer()
     {
         if(!canMove) return;
+
+        if (llGetTime() < teleportFreezeUntil)
+        {
+            return;
+        }
+
         vector pos = llGetPos();
         
         integer aheadClear = isPathClear(pos, currentDirection);
@@ -534,13 +555,11 @@ state_entry()
             
             if(CanScriptExecute(cost))
             {
-                llOwnerSay("HUD Action Approved! Consumed " + (string)cost + " energy. Remaining energy: " + energy);
-        
+                llOwnerSay("Consumed " + (string)cost + " energy. Remaining energy: " + energy);
                 if(llSubStringIndex(originalCommand, "SLOW") == 0 ||llSubStringIndex(originalCommand, "FREEZE") == 0 || llSubStringIndex(originalCommand, "DISTRACT") == 0)
                 {
                     llRegionSay(HUD_CHANNEL, "ENERGY_APPROVED=" + originalCommand);
                 }
-                
                 else if(llSubStringIndex(originalCommand, "CAMOUFLAGE") == 0) {
                     ParseCamouflage(originalCommand);
                 }
