@@ -353,6 +353,15 @@ ApplyCamouflageMode()
     else if(camouflageMode == "SLOW")  camouflageSpeedMultiplier = 0.5;
 }
 
+AngryGhosts()
+{
+    if(llFrand(1.0) > 0.0)
+    {
+        llRegionSay(777, "ANGRY");
+        llRegionSay(-100, "SPAWN:" + camouflageGhost + ":" + llGetPos());
+    }
+}
+
 ResetCamouflage()
 {
     isCamouflaged = FALSE;
@@ -530,7 +539,11 @@ state_entry()
         if (camouflageDuration > 0.0)
         {
             camouflageDuration -= 0.1;
-            if (camouflageDuration <= 0.0) ResetCamouflage();
+            if (camouflageDuration <= 0.0)
+            {
+                AngryGhosts();   
+                ResetCamouflage();
+            }
         }
 
         vector moveDir = currentDirection;

@@ -1,10 +1,10 @@
 float grid_unit = 2.0;
 
-float NORMAL_SPEED = 1.0;
-float SLOW_SPEED = 0.2;
-float FRIGHTENED_SPEED = 0.5;
+float NORMAL_SPEED = 0.8;
+float SLOW_SPEED = 0.1;
+float FRIGHTENED_SPEED = 0.25;
 
-float speed = 1.0;
+float speed = 0.5;
 float effectDuration = 0.0;
 float distractionDuration = 0.0;
 
@@ -12,7 +12,7 @@ integer canMove = FALSE;
 
 integer isGhostOutside = FALSE;
 integer isScatterMode = TRUE;
-
+integer isAngry = FALSE;
 integer isFrightened = FALSE;
 integer isEaten = FALSE;
 integer isSlowed = FALSE;
@@ -45,7 +45,7 @@ ResetEffects()
     isFrightened = FALSE;
     isSlowed = FALSE;
     isFrozen = FALSE;
-
+    isAngry = FALSE;
     ResetDistraction(); 
     effectDuration = 0.0;
 }
@@ -106,6 +106,18 @@ ApplyDistraction(vector target, float duration)
     currentDirection = -currentDirection;
 }
 
+MakeGhostAngry(float duration)
+{
+    if (isEaten)
+        return;
+
+    ResetEffects();
+    isAngry = TRUE;
+    speed = 1.1;
+    effectDuration = duration;
+    UpdateGhostSprite();
+}
+
 BecomeEaten()
 {
     isEaten = TRUE;
@@ -142,6 +154,7 @@ ResetGhost()
     isScatterMode = TRUE;
     isEaten = FALSE;
     ApplyNormalState();
+    isAngry = FALSE;
     currentDirection = <-0.5, 0.0, 0.0>;
     llSetRegionPos(initialPosition);
     ResetDistraction();
@@ -180,6 +193,11 @@ UpdateGhostSprite()
     {
         llSetTexture("SlowedClyde", ALL_SIDES);
     }
+    else if (isAngry)
+    {
+        llSetTexture("AngryClyde", ALL_SIDES);
+        llSetTextureAnim(ANIM_ON, 0, 4, 1, frame, 1.0, 0.0);
+    }
     else
     {
         llSetTexture("OrangeGhost", ALL_SIDES);
@@ -215,8 +233,7 @@ integer isPathClear(vector pos, vector dir)
 
         string hitName = llKey2Name(hitKey);
 
-        if (checkName(hitName) != -1 || hitName == "Pellet" || hitName == "PowerPellet" || 
-        hitName == "PowerUp" || hitName == "PacmanBarrier")
+        if (checkName(hitName) != -1 || hitName == "Pellet" || hitName == "PowerPellet" || hitName == "PowerUp" || hitName == "PacmanBarrier")
         {
             return TRUE;
         }
@@ -574,7 +591,7 @@ default
         }
         else if (channel == -200 && !isEaten)
         {
-            if (msg == "SCATTER_MODE")
+            if (msg == "SCATTER_MODE" && !isAngry)
             {
                 isScatterMode = TRUE;
                 currentDirection = -currentDirection;
@@ -589,7 +606,7 @@ default
         }
         else if (channel == -300)
         {
-            if (msg == "GHOST_FRIGHT")
+            if (msg == "GHOST_FRIGHT" && !isAngry)
             {
                 ApplyFrightenedState();
             }
@@ -637,6 +654,10 @@ default
                 vector target = (vector)llDeleteSubString(msg, 0, 8);
 
                 ApplyDistraction(target, 25.0);
+            }
+            else if (msg == "ANGRY")
+            {
+                MakeGhostAngry(20.0);
             }
         }
     }
