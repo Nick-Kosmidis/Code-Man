@@ -10,7 +10,7 @@ integer lifes = 3;
 integer controls_to_track;
 integer canMove = FALSE;
 integer isEaten = FALSE;
-
+integer canLoseEnergy = FALSE;
 integer isCamouflaged = FALSE;
 float camouflageDuration;
 float camouflageTime = 10.0;
@@ -18,8 +18,10 @@ string camouflageGhost = "YellowGhost";
 string camouflageMode = "NORMAL";
 float camouflageSpeedMultiplier = 1.0;
 
+integer energyAmountToRemove = 0;
 float energyRefillCooldown = 10.0;
 float lastEnergyRefillTime = 0.0;
+float energyCounter = 0.0;
 
 float MIN_X = 96.0;
 float MAX_X = 160.0;
@@ -27,7 +29,7 @@ float MIN_Y = 108.0;
 float MAX_Y = 152.0;
 
 integer HUD_CHANNEL = -98;
-
+integer ENERGY_BAR_CHANNEL = -111;
 integer energy = 100;
 
 
@@ -64,7 +66,7 @@ integer CanScriptExecute(integer amount)
 {
     if(energy-amount < 0)
     {
-        llOwnerSay("You dont have enough energy for this...");
+        llDialog(llGetOwner(), "You dont have enough energy for this...", ["OK"], 0);
         return FALSE;
     }
     
@@ -109,7 +111,7 @@ StunPacman()
 {
     if(llFrand(1.0) > 0.5)
     {
-        llOwnerSay("Pacman cant move for 5 seconds!");
+        llDialog(llGetOwner(), "Pacman cant move for 5 seconds!", ["OK"], 0);
         teleportFreezeUntil = llGetTime() + 5.0;   
     }
 }
@@ -331,7 +333,7 @@ ApplyCamouflage(float time)
     ApplyCamouflageGhost();
     ApplyCamouflageMode();
     UpdateCamouflageSprite();
-    llOwnerSay("Camouflage Activated");
+    llDialog(llGetOwner(), "Camouflage Activated", ["OK"], 0);
 }
 
 ApplyCamouflageGhost()
@@ -353,11 +355,10 @@ ApplyCamouflageMode()
     else if(camouflageMode == "SLOW")  camouflageSpeedMultiplier = 0.5;
 }
 
-AngryGhosts()
+TrySpawnGhost()
 {
     if(llFrand(1.0) > 0.0)
     {
-        llRegionSay(777, "ANGRY");
         llRegionSay(-100, "SPAWN:" + camouflageGhost + ":" + llGetPos());
     }
 }
@@ -379,7 +380,6 @@ ResetCamouflage()
     
     float angle = llAtan2(currentDirection.y, currentDirection.x);
     llSetRot(llEuler2Rot(<0, 0, angle>));
-    llOwnerSay("Camouflage Ended!");
 }
 
 UpdateCamouflageSprite()
@@ -447,6 +447,9 @@ ResetPacman()
     llSetRegionPos(<128.0, 110.0, 21.5>);
     
     canMove = FALSE;
+    canLoseEnergy = FALSE;
+    energyCounter = 0;
+    energyAmountToRemove = 0;
     speed = 0.5;
     currentDirection = <speed, 0.0, 0.0>; 
     nextDirection = <speed, 0.0, 0.0>;   
@@ -504,6 +507,19 @@ state_entry()
     timer()
     {
         if(!canMove) return;
+        
+        energyCounter++;
+        if(energyCounter >= 10 && canLoseEnergy)
+        {
+            energyCounter = 0; 
+            
+            if(energy > 0)
+            {
+                energy -= energyAmountToRemove; 
+                
+                llRegionSay(ENERGY_BAR_CHANNEL, "ENERGY=" + (string)energy);
+            }
+        }
 
         if (llGetTime() < teleportFreezeUntil)
         {
@@ -541,7 +557,7 @@ state_entry()
             camouflageDuration -= 0.1;
             if (camouflageDuration <= 0.0)
             {
-                AngryGhosts();   
+                TrySpawnGhost();   
                 ResetCamouflage();
             }
         }
@@ -557,63 +573,56 @@ state_entry()
     
     listen(integer channel, string name, key id, string msg)
     {
- 
         if(llSubStringIndex(msg, "CHECK_ENERGY=") == 0)
         {
+            llOwnerSay("CHECK ENERGY FOR COMMAND" + msg);
             string data = llGetSubString(msg, 13, -1);
             list parts = llParseString2List(data, [":"], []);
             
             integer cost = (integer)llList2String(parts, 0);
+            llOwnerSay("COST IS " + cost);
             string originalCommand = llList2String(parts, 1);
+            llOwnerSay("ORIGINAL COMMAND IS " + originalCommand);
             
             if(CanScriptExecute(cost))
             {
-                llOwnerSay("Consumed " + (string)cost + " energy. Remaining energy: " + energy);
-                if(llSubStringIndex(originalCommand, "SLOW") == 0 ||llSubStringIndex(originalCommand, "FREEZE") == 0 || llSubStringIndex(originalCommand, "DISTRACT") == 0)
+                llRegionSay(ENERGY_BAR_CHANNEL, "ENERGY=" + (string)energy);
+                llRegionSay(HUD_CHANNEL, "ENERGY_APPROVED=" + originalCommand);
+                
+                if(llSubStringIndex(originalCommand, "CAMOUFLAGE") == 0) 
                 {
-                    llRegionSay(HUD_CHANNEL, "ENERGY_APPROVED=" + originalCommand);
-                }
-                else if(llSubStringIndex(originalCommand, "CAMOUFLAGE") == 0) {
                     ParseCamouflage(originalCommand);
                 }
-                else if(llSubStringIndex(originalCommand, "TELEPORT") == 0) {
+                else if(llSubStringIndex(originalCommand, "TELEPORT") == 0) 
+                {
                     ParseTeleport(originalCommand);
                 }
-            }
-        }
-        else if (llSubStringIndex(msg, "ENERGY_REFILL") == 0)
-        {
-            float currentTime = llGetTime();
-            if (currentTime - lastEnergyRefillTime < energyRefillCooldown)
-            {
-                float remainingCooldown = energyRefillCooldown - (currentTime - lastEnergyRefillTime);
-                llOwnerSay("Energy Refill is on cooldown! Please wait " + (string)energyRefillCooldown + " seconds.");
-                return;
-            }
-            integer amountToAdd = 10;
-    
-            if (llSubStringIndex(msg, "=") != -1)
-            {
-                list refillParts = llParseString2List(msg, ["="], []);
-                amountToAdd = (integer)llList2String(refillParts, 1);
-            }
-            energy = energy + amountToAdd;
-    
-            if (energy > 100) 
-            {
-                energy = 100;
-            }
-    
-            llOwnerSay("Energy restored by " + (string)amountToAdd + "! Current Energy: " + (string)energy);
+                else if(llSubStringIndex(originalCommand, "ENERGY_REFILL") == 0)
+                {
+                    llOwnerSay("REFILL THE ENERGY");
+                    float currentTime = llGetTime();
+                    if (currentTime - lastEnergyRefillTime < energyRefillCooldown)
+                    {
+                        llOwnerSay("Energy Refill is on internal cooldown! Please wait.");
+                        return;
+                    }
+                    
+                    list parts = llParseString2List(originalCommand, ["="], []);
+                    integer amount = (integer)llList2String(parts, 1);
+                    energy = energy + amount;
+                    if (energy > 100) 
+                        energy = 100;
             
-            lastEnergyRefillTime = currentTime;
+                    llRegionSay(ENERGY_BAR_CHANNEL, "ENERGY=" + (string)energy);
+                    lastEnergyRefillTime = currentTime;
+                }
+            }
         }
             
         if (msg == "DIE_PACMAN") 
         {
             if(isEaten) return;
             isEaten = TRUE;
-            llOwnerSay("Pacman lost a life");
             lifes--;
             ResetPacman();
             llShout(-100, "STOP_GAME");
@@ -626,10 +635,24 @@ state_entry()
         }
         else if(msg == "EXIT_MAZE")
         {
+            llRegionSay(ENERGY_BAR_CHANNEL, "ENERGY=100");
             llShout(-100, "STOP_GAME");
             llRegionSay(-98, "END_GAME");
             llRegionSay(-500, "RESET"); 
             llDie();
+        }
+        else if (llSubStringIndex(msg, "REMOVE_ENERGY=") == 0)
+        {
+            canLoseEnergy = TRUE;
+            list parts = llParseString2List(msg, ["="], []);
+            energyAmountToRemove = (integer)llList2String(parts, 1);
+            
+        }
+        else if (msg == "REMOVE_ENERGY_OFF")
+        {
+            canLoseEnergy = FALSE;
+            energyCounter = 0;
+            energyAmountToRemove = 0;
         }
     }
 }

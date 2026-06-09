@@ -5,6 +5,7 @@ string DISTRACTION_SCRIPT = "DistractionScript";
 string CAMOUFLAGE_SCRIPT = "CamouflageScript";
 string TELEPORT_SCRIPT = "TeleportScript";
 string ENERGY_SCRIPT = "EnergyScript";
+string MAGNET_SCRIPT = "MagnetScript";
 string currentOwner;
 
 integer GHOST_CHANNEL = 777;
@@ -15,14 +16,63 @@ integer canCode = FALSE;
 list scripts = [SLOW_SCRIPT, FREEZE_SCRIPT, DISTRACTION_SCRIPT, CAMOUFLAGE_SCRIPT, TELEPORT_SCRIPT, ENERGY_SCRIPT];
 list commands = ["EXECUTE_SLOW_LOGIC", "EXECUTE_FREEZE_LOGIC", "EXECUTE_DISTRACT_LOGIC", "EXECUTE_CAMOUFLAGE_LOGIC", "EXECUTE_TELEPORT_LOGIC", "EXECUTE_ENERGY_LOGIC"];
 
+list cooldown_requirements = [5, 8, 6, 10, 3, 15, 4];
+list script_cooldowns = [0, 0, 0, 0, 0, 0, 0];
+
 list ADMINS =
 [
     "a33d8e61-db24-4475-88ec-b292c0de124e"
 ];
 
+ResetHUD()
+{
+    canCode = FALSE;
+    script_cooldowns = [0, 0, 0, 0, 0, 0];
+}
+
 integer IsAdmin()
 {
     return llListFindList(ADMINS, currentOwner) != -1;
+}
+
+integer IsScriptLocked(string scriptName)
+{
+    integer index = llListFindList(scripts, [scriptName]);
+    if(index == -1) return FALSE; 
+    
+    integer current_status = llList2Integer(script_cooldowns, index);
+    if(current_status > 0)
+    {
+        llOwnerSay("CRITICAL: '" + scriptName + "' is locked! Need " + (string)current_status + " more activations.");
+        return TRUE; 
+    }
+    return FALSE; 
+}
+
+TriggerCooldown(string scriptName)
+{
+    integer index = llListFindList(scripts, [scriptName]);
+    if(index == -1) return;
+    
+    integer req = llList2Integer(cooldown_requirements, index);
+    script_cooldowns = llListReplaceList(script_cooldowns, [req], index, index);
+    
+    integer i;
+    integer total = llGetListLength(scripts);
+    for(i = 0; i < total; ++i)
+    {
+        if(i != index) 
+        {
+            integer value = llList2Integer(script_cooldowns, i);
+            if(value > 0)
+            {
+                value = value - 1;
+                script_cooldowns = llListReplaceList(script_cooldowns, [value], i, i);
+                if(value == 0) 
+                    llDialog(llGetOwner(), "SUCCESS: " + llList2String(scripts, i) + " is now UNLOCKED!", ["OK"], -1);
+            }
+        }
+    }
 }
 
 default
@@ -51,8 +101,40 @@ default
         else if(llSubStringIndex(msg, "ENERGY_APPROVED=") == 0)
         {
             string approvedCmd = llGetSubString(msg, 16, -1);
-            llRegionSay(GHOST_CHANNEL, approvedCmd);
-            llOwnerSay("Broadcasted " + approvedCmd + " to Ghosts.");
+            
+            if(llSubStringIndex(approvedCmd, "SLOW") == 0)
+            { 
+                TriggerCooldown(SLOW_SCRIPT); 
+                llRegionSay(GHOST_CHANNEL, approvedCmd); 
+            }
+            else if (llSubStringIndex(approvedCmd, "FREEZE") == 0)
+            {
+                TriggerCooldown(FREEZE_SCRIPT);
+                llRegionSay(GHOST_CHANNEL, approvedCmd);
+            }
+            else if (llSubStringIndex(approvedCmd, "DISTRACT") == 0)
+            {
+                TriggerCooldown(DISTRACTION_SCRIPT);
+                llRegionSay(GHOST_CHANNEL, approvedCmd);
+            }
+            else if(llSubStringIndex(approvedCmd, "CAMOUFLAGE") == 0) 
+            { 
+                TriggerCooldown(CAMOUFLAGE_SCRIPT); 
+            }
+            else if(llSubStringIndex(approvedCmd, "TELEPORT") == 0) 
+            { 
+                TriggerCooldown(TELEPORT_SCRIPT); 
+            }
+            else if(llSubStringIndex(approvedCmd, "ENERGY_REFILL") == 0) 
+            { 
+                llOwnerSay("Can be executed");
+                TriggerCooldown(ENERGY_SCRIPT); 
+            }
+        }
+        else if (msg == "RESET")
+        {
+            llOwnerSay("RESET HUD");
+            ResetHUD();
         }
     }
 
@@ -91,81 +173,103 @@ default
         }
         else if (str == "CHECK_AND_RUN_SLOW")
         {
-            if (llGetInventoryType(SLOW_SCRIPT) == INVENTORY_SCRIPT)
-            {
-                llOwnerSay("SlowScript found! Executing player logic...");
-                llSetScriptState(SLOW_SCRIPT, TRUE); 
-                llMessageLinked(LINK_SET, 100, "EXECUTE_SLOW_LOGIC", NULL_KEY);
-            }
-            else
-            {
-                llOwnerSay("Error: 'SlowScript' not found. Please drag and drop your script onto the HUD first!");
+            if(!IsScriptLocked(SLOW_SCRIPT))
+            {                
+                if (llGetInventoryType(SLOW_SCRIPT) == INVENTORY_SCRIPT)
+                {
+                    llOwnerSay("SlowScript found! Executing player logic...");
+                    llSetScriptState(SLOW_SCRIPT, TRUE); 
+                    llMessageLinked(LINK_SET, 100, "EXECUTE_SLOW_LOGIC", NULL_KEY);
+                }
+                else
+                {
+                    llOwnerSay("Error: 'SlowScript' not found. Please drag and drop your script onto the HUD first!");
+                }
             }
         }
         else if (str == "CHECK_AND_RUN_FREEZE")
         {
-            if (llGetInventoryType(FREEZE_SCRIPT) == INVENTORY_SCRIPT)
+            if(!IsScriptLocked(FREEZE_SCRIPT))
             {
-                llOwnerSay("FreezeScript found! Executing player logic...");
-                llSetScriptState(FREEZE_SCRIPT, TRUE); 
-                llMessageLinked(LINK_SET, 100, "EXECUTE_FREEZE_LOGIC", NULL_KEY);
-            }
-            else
-            {
-                llOwnerSay("Error: 'Freeze' not found. Please drag and drop your script onto the HUD first!");
+                if (llGetInventoryType(FREEZE_SCRIPT) == INVENTORY_SCRIPT)
+                {
+                    llOwnerSay("FreezeScript found! Executing player logic...");
+                    llSetScriptState(FREEZE_SCRIPT, TRUE); 
+                    llMessageLinked(LINK_SET, 100, "EXECUTE_FREEZE_LOGIC", NULL_KEY);
+                }
+                else
+                {
+                    llOwnerSay("Error: 'Freeze' not found. Please drag and drop your script onto the HUD first!");
+                }
             }
         }
         else if (str == "CHECK_AND_RUN_DISTRACT")
         {
-            if (llGetInventoryType(DISTRACTION_SCRIPT) == INVENTORY_SCRIPT)
+            if(!IsScriptLocked(DISTRACTION_SCRIPT))
             {
-                llOwnerSay("DistractScript found! Executing player logic...");
-                llSetScriptState(DISTRACTION_SCRIPT, TRUE); 
-                llMessageLinked(LINK_SET, 100, "EXECUTE_DISTRACT_LOGIC", NULL_KEY);
-            }
-            else
-            {
-                llOwnerSay("Error: 'DistractionScript' not found. Please drag and drop your script onto the HUD first!");
+                if (llGetInventoryType(DISTRACTION_SCRIPT) == INVENTORY_SCRIPT)
+                {
+                    llOwnerSay("DistractScript found! Executing player logic...");
+                    llSetScriptState(DISTRACTION_SCRIPT, TRUE); 
+                    llMessageLinked(LINK_SET, 100, "EXECUTE_DISTRACT_LOGIC", NULL_KEY);
+                }
+                else
+                {
+                    llOwnerSay("Error: 'DistractionScript' not found. Please drag and drop your script onto the HUD first!");
+                }
             }
         }
         else if (str == "CHECK_AND_RUN_CAMOUFLAGE")
         {
-            if (llGetInventoryType(CAMOUFLAGE_SCRIPT) == INVENTORY_SCRIPT)
+            if(!IsScriptLocked(CAMOUFLAGE_SCRIPT))
             {
-                llOwnerSay("CamouflageScript found! Executing player logic...");
-                llSetScriptState(CAMOUFLAGE_SCRIPT, TRUE); 
-                llMessageLinked(LINK_SET, 100, "EXECUTE_CAMOUFLAGE_LOGIC", NULL_KEY);
-            }
-            else
-            {
-                llOwnerSay("Error: 'CamouflageScript' not found. Please drag and drop your script onto the HUD first!");
+                if (llGetInventoryType(CAMOUFLAGE_SCRIPT) == INVENTORY_SCRIPT)
+                {
+                    llOwnerSay("CamouflageScript found! Executing player logic...");
+                    llSetScriptState(CAMOUFLAGE_SCRIPT, TRUE); 
+                    llMessageLinked(LINK_SET, 100, "EXECUTE_CAMOUFLAGE_LOGIC", NULL_KEY);
+                }
+                else
+                {
+                    llOwnerSay("Error: 'CamouflageScript' not found. Please drag and drop your script onto the HUD first!");
+                }
             }
         }
         else if (str == "CHECK_AND_RUN_TELEPORT")
         {
-            if (llGetInventoryType(TELEPORT_SCRIPT) == INVENTORY_SCRIPT)
+            if(!IsScriptLocked(TELEPORT_SCRIPT))
             {
-                llOwnerSay("TeleportScript found! Executing player logic...");
-                llSetScriptState(TELEPORT_SCRIPT, TRUE); 
-                llMessageLinked(LINK_SET, 100, "EXECUTE_TELEPORT_LOGIC", NULL_KEY);
-            }
-            else
-            {
-                llOwnerSay("Error: 'TeleportScript' not found. Please drag and drop your script onto the HUD first!");
+                if (llGetInventoryType(TELEPORT_SCRIPT) == INVENTORY_SCRIPT)
+                {
+                    llOwnerSay("TeleportScript found! Executing player logic...");
+                    llSetScriptState(TELEPORT_SCRIPT, TRUE); 
+                    llMessageLinked(LINK_SET, 100, "EXECUTE_TELEPORT_LOGIC", NULL_KEY);
+                }
+                else
+                {
+                    llOwnerSay("Error: 'TeleportScript' not found. Please drag and drop your script onto the HUD first!");
+                }
             }
         }
         else if (str == "CHECK_AND_RUN_ENERGY")
         {
-            if (llGetInventoryType(ENERGY_SCRIPT) == INVENTORY_SCRIPT)
+            if(!IsScriptLocked(ENERGY_SCRIPT))
             {
-                llOwnerSay("EnergyScript found! Executing player logic...");
-                llSetScriptState(ENERGY_SCRIPT, TRUE); 
-                llMessageLinked(LINK_SET, 100, "EXECUTE_ENERGY_LOGIC", NULL_KEY);
+                if (llGetInventoryType(ENERGY_SCRIPT) == INVENTORY_SCRIPT)
+                {
+                    llOwnerSay("EnergyScript found! Executing player logic...");
+                    llSetScriptState(ENERGY_SCRIPT, TRUE); 
+                    llMessageLinked(LINK_SET, 100, "EXECUTE_ENERGY_LOGIC", NULL_KEY);
+                }
+                else
+                {
+                    llOwnerSay("Error: 'EnergyScript' not found. Please drag and drop your script onto the HUD first!");
+                }
             }
-            else
-            {
-                llOwnerSay("Error: 'EnergyScript' not found. Please drag and drop your script onto the HUD first!");
-            }
+        }
+        else if (str == "CHECK_AND_RUN_BARRIER")
+        {
+            llRegionSay(-700, "ACTIVATE");
         }
         else 
         {
@@ -180,7 +284,8 @@ default
                 
                 if (command == "ENERGY_REFILL")
                 {
-                    llRegionSay(PACMAN_CHANNEL, clean_str);
+                    llOwnerSay("Refill the energy");
+                    llRegionSay(PACMAN_CHANNEL, "CHECK_ENERGY=0:" + clean_str);
                 }
                 else if (llSubStringIndex(clean_str, "CAMOUFLAGE") == 0)
                 {
@@ -221,7 +326,7 @@ default
                 else if (clean_str == "TELEPORT")
                     llRegionSay(PACMAN_CHANNEL, "CHECK_ENERGY=15:TELEPORT");
                 else if (clean_str == "ENERGY_REFILL")
-                    llRegionSay(PACMAN_CHANNEL, "ENERGY_REFILL");
+                    llRegionSay(PACMAN_CHANNEL, "CHECK_ENERGY=0:ENERGY_REFILL");
             }
         }
     }

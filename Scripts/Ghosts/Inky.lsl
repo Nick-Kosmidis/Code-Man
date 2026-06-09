@@ -109,7 +109,7 @@ ApplyDistraction(vector target, float duration)
     currentDirection = -currentDirection;
 }
 
-MakeGhostAngry(float duration)
+TryAngryGhost(float duration)
 {
     if (isEaten)
         return;
@@ -161,6 +161,7 @@ ResetGhost()
     isAngry = FALSE;
     ApplyNormalState();
     currentDirection = <0, 0.5, 0>;
+    llSetAlpha(1.0, 0);
     llSetRegionPos(initialPosition);
     ResetDistraction();
     UpdateGhostSprite();
@@ -238,7 +239,7 @@ integer isPathClear(vector pos, vector dir)
         key hitKey = llList2Key(raycast, 0);
         string hitName = llKey2Name(hitKey);
 
-        if (checkName(hitName) != -1 || hitName == "Pellet" || hitName == "PowerPellet" || hitName == "PowerUp" || hitName == "PacmanBarrier")
+        if (checkName(hitName) != -1 || hitName == "Pellet" || hitName == "PowerPellet" || hitName == "PowerUp" || hitName == "PacmanBarrier" || hitName == "TransparentObstacle")
         {
             return TRUE;
         }
@@ -251,6 +252,7 @@ integer isPathClear(vector pos, vector dir)
             else if (!isFrightened && !isEaten)
             {
                 llRegionSay(-99, "EAT_PACMAN");
+                llRegionSay(-100, "RESET");
             }
             return TRUE;
         }
@@ -537,6 +539,7 @@ default
             if (distractionDuration <= 0.0)
             {
                 ResetDistraction();
+                TryAngryGhost(20.0);
                 currentDirection = -currentDirection;
             }
         }
@@ -688,9 +691,13 @@ default
 
                 ApplyDistraction(target, 25.0);
             }
-            else if (msg == "ANGRY")
+            else if (msg == "CLOAK_ON")
             {
-                MakeGhostAngry(20.0);
+                llSetAlpha(0.0, 0);
+            }
+            else if (msg == "CLOAK_OFF")
+            {
+                llSetAlpha(1.0, 0);
             }
         }
     }
