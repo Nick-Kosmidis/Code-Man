@@ -12,6 +12,7 @@ integer canMove = FALSE;
 integer isEaten = FALSE;
 integer canLoseEnergy = FALSE;
 integer isCamouflaged = FALSE;
+integer areControlsReverted = FALSE;
 float camouflageDuration;
 float camouflageTime = 10.0;
 string camouflageGhost = "YellowGhost";
@@ -448,6 +449,7 @@ ResetPacman()
     
     canMove = FALSE;
     canLoseEnergy = FALSE;
+    areControlsReverted = FALSE;
     energyCounter = 0;
     energyAmountToRemove = 0;
     speed = 0.5;
@@ -493,13 +495,29 @@ state_entry()
     {
         if(canMove)
         {
-            if (level & (CONTROL_LEFT | CONTROL_ROT_LEFT))      
+            integer effective_level = level;
+            
+            if (areControlsReverted)
+            {
+                effective_level = 0; 
+                
+                if (level & (CONTROL_LEFT | CONTROL_ROT_LEFT))      
+                    effective_level |= CONTROL_RIGHT;
+                if (level & (CONTROL_RIGHT | CONTROL_ROT_RIGHT))    
+                    effective_level |= CONTROL_LEFT;
+                if (level & CONTROL_FWD)                            
+                    effective_level |= CONTROL_BACK;
+                if (level & CONTROL_BACK)                           
+                    effective_level |= CONTROL_FWD;
+            }
+
+            if (effective_level & (CONTROL_LEFT | CONTROL_ROT_LEFT))      
                 nextDirection = <-speed, 0.0, 0.0>; 
-            else if (level & (CONTROL_RIGHT | CONTROL_ROT_RIGHT)) 
+            else if (effective_level & (CONTROL_RIGHT | CONTROL_ROT_RIGHT)) 
                 nextDirection = <speed, 0.0, 0.0>;  
-            else if (level & CONTROL_FWD)                         
+            else if (effective_level & CONTROL_FWD)                         
                 nextDirection = <0.0, speed, 0.0>;  
-            else if (level & CONTROL_BACK)                        
+            else if (effective_level & CONTROL_BACK)                        
                 nextDirection = <0.0, -speed, 0.0>;
         }
     }
@@ -615,6 +633,9 @@ state_entry()
             
                     llRegionSay(ENERGY_BAR_CHANNEL, "ENERGY=" + (string)energy);
                     lastEnergyRefillTime = currentTime;
+                    
+                    integer randomPelletID = 1 + (integer)llFrand(4.0); 
+                    llRegionSay(-500, "DESPAWN_PELLET:" + (string)randomPelletID);
                 }
             }
         }
@@ -630,6 +651,8 @@ state_entry()
             {
                 llRegionSay(-98, "END_GAME");
                 llRegionSay(-500, "RESET"); 
+                llRegionSay(-98, "RESET");
+                llRegionSay(ENERGY_BAR_CHANNEL, "ENERGY=100");
                 llDie();    
             }
         }
@@ -653,6 +676,19 @@ state_entry()
             canLoseEnergy = FALSE;
             energyCounter = 0;
             energyAmountToRemove = 0;
+        }
+        else if (msg == "REVERT_CONTROLS")
+        {
+            areControlsReverted = TRUE;
+        }
+        else if (msg == "REVERT_CONTROLS_STOP")
+        {
+            areControlsReverted = FALSE;
+        }
+        else if (msg == "DESPAWN_FAILED_ALREADY_EATEN")
+        {
+            integer randomPelletID = 1 + (integer)llFrand(4.0); 
+            llRegionSay(-500, "DESPAWN_PELLET:" + (string)randomPelletID);
         }
     }
 }

@@ -11,7 +11,7 @@ string currentOwner;
 integer GHOST_CHANNEL = 777;
 integer PACMAN_CHANNEL = -99;
 integer HUD_CHANNEL = -98;
-integer canCode = FALSE;
+integer canCode = TRUE;
 
 list scripts = [SLOW_SCRIPT, FREEZE_SCRIPT, DISTRACTION_SCRIPT, CAMOUFLAGE_SCRIPT, TELEPORT_SCRIPT, ENERGY_SCRIPT];
 list commands = ["EXECUTE_SLOW_LOGIC", "EXECUTE_FREEZE_LOGIC", "EXECUTE_DISTRACT_LOGIC", "EXECUTE_CAMOUFLAGE_LOGIC", "EXECUTE_TELEPORT_LOGIC", "EXECUTE_ENERGY_LOGIC"];
@@ -26,7 +26,7 @@ list ADMINS =
 
 ResetHUD()
 {
-    canCode = FALSE;
+    canCode = TRUE;
     script_cooldowns = [0, 0, 0, 0, 0, 0];
 }
 
@@ -131,6 +131,11 @@ default
                 TriggerCooldown(ENERGY_SCRIPT); 
             }
         }
+        else if (msg == "CODE_DEACTIVATED")
+        {
+            llOwnerSay("You cannont code anymore! Eat the power up to re-activate your code ability");
+            canCode = FALSE;
+        }
         else if (msg == "RESET")
         {
             llOwnerSay("RESET HUD");
@@ -142,7 +147,7 @@ default
     {
         currentOwner = (string)llGetOwner();
         
-        if(!IsAdmin() && !canCode)
+        if(/*!IsAdmin() &&*/ !canCode)
         {
             llOwnerSay("You dont have the ability to code");
             return;

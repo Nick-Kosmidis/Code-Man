@@ -7,11 +7,47 @@ integer modeTimer = 0;
 integer noClipCounter = 0; 
 integer cloakCounter = 0;
 integer energyDrainCounter = 0;
-integer eventCooldown = 0;
+integer revertedControlsCounter = 0;
+integer eventCooldown = 0; 
     
 integer GHOST_CHANNEL = 777;
 integer MAZE_CHANNEL = -600;
 integer PACMAN_CHANNEL = -99;
+integer HUD_CHANNEL = -98;
+
+list POWERUP_POSITIONS = [<126.0, 134.0, 21.0>, <130.0, 134.0, 21.0>, <132.0, 134.0, 21.0>, <134.0, 134.0, 21.0>,
+<136.0, 134.0, 21.0>, <136.0, 132.0, 21.0>, <136.0, 130.0, 21.0>, <138.0, 130.0, 21.0>, <136.0, 128.0, 21.0>, <136.0, 126.0, 21.0>, <132.0, 126.0, 21.0>, <130.0, 126.0, 21.0>, 
+<128.0, 126.0, 21.0>];
+
+SpawnPowerUp()
+{
+    string inventoryName = "PowerUp";
+
+    llOwnerSay("Trying to spawn powerup");
+
+    integer type = llGetInventoryType(inventoryName);
+
+    llOwnerSay("Inventory type = " + (string)type);
+
+    if(type == INVENTORY_OBJECT)
+    {
+        integer safeTilesCount = llGetListLength(POWERUP_POSITIONS);
+        integer randomTileIndex = (integer)llFrand(safeTilesCount);
+
+        vector targetTile = llList2Vector(POWERUP_POSITIONS, randomTileIndex);
+
+        llOwnerSay("Rezzing at " + (string)targetTile);
+
+        llRezObject(
+            inventoryName,
+            <126.0, 134.0, 21.0>,
+            ZERO_VECTOR,
+            ZERO_ROTATION,
+            0
+        );
+    }
+}
+
 SpawnGhost(string ghostName, vector position)
 {
     string inventoryName = "YellowGhost";
@@ -37,24 +73,35 @@ TriggerRandomEvent()
     if (noClipCounter > 0 || cloakCounter > 0) 
         return;
 
-    float dice = llFrand(100.0);
-    dice = 60.0;
-    if (dice < 25.0)
+    integer dice = (integer)llFrand(5.0);
+    dice = 4;
+    if (dice == 0)
     {
         noClipCounter = 15; 
         llRegionSay(MAZE_CHANNEL, "NO_CLIP_ON"); 
         llOwnerSay("[RANDOM EVENT] Ghosts enabled No-Clip! Walls are now phase-shifted.");
     }
-    else if (dice < 50.0)
+    else if (dice == 1)
     {
         energyDrainCounter = 15; 
         llRegionSay(PACMAN_CHANNEL, "REMOVE_ENERGY=5");  
         llOwnerSay("[RANDOM EVENT] Pacman's energy drains!!!");
     }
-    else if (dice < 75.0)
+    else if (dice == 2)
     { 
         llRegionSay(MAZE_CHANNEL, "CHANGE_POSITION");  
         llOwnerSay("[RANDOM EVENT] Terrain Teraforming!!!");
+    }
+    else if (dice == 3)
+    { 
+        revertedControlsCounter = 10;
+        llRegionSay(PACMAN_CHANNEL, "REVERT_CONTROLS");  
+        llOwnerSay("[RANDOM EVENT] Pacman Controls are reverted!!!");
+    }
+    else if (dice == 4)
+    {
+        llRegionSay(HUD_CHANNEL, "CODE_DEACTIVATED");
+        SpawnPowerUp();
     }
     else
     {
@@ -162,6 +209,16 @@ default
             {
                 llRegionSay(PACMAN_CHANNEL, "REMOVE_ENERGY_OFF");
                 llOwnerSay("Notice: Ghost Cloaking expired.");
+            }
+        }
+
+        if (revertedControlsCounter > 0)
+        {
+            revertedControlsCounter--;
+            if (revertedControlsCounter == 0)
+            {
+                llRegionSay(PACMAN_CHANNEL, "REVERT_CONTROLS_STOP");
+                llOwnerSay("Notice: Controls revertion expired.");
             }
         }
 
